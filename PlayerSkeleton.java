@@ -249,12 +249,17 @@ class FittestChromosone {
 }
 
 class StateUtils {
+	// Maximum legal slots given piece type and orient
 	public static int[][] maxSlots = new int[State.N_PIECES][];
+	// Initalize maxSlots
 	static {
+		// For each piece type
 		for (int i=0; i<State.N_PIECES; i++) {
 			int[][] moves = State.legalMoves[i];
 			maxSlots[i] = new int[State.pOrients[i]];
+			// For each orientation
 			for (int j=0; j<State.pOrients[i]; j++) {
+				// Count number of moves in legalMoves
 				for (int[] move: moves) {
 					if (move[State.ORIENT] == j) {
 						maxSlots[i][j]++;
@@ -316,7 +321,7 @@ class StateUtils {
 				slot = i-4;
 			}
 		}
-		
+
 		System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
 		return slot < maxSlots[s.nextPiece][orient] ? slot : -1;
 	}

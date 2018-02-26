@@ -1,14 +1,18 @@
 import java.util.*;
+import java.util.concurrent.*;
 import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
 	static boolean HEADLESS = false;
+	static boolean EVOLVE = false;
 
 	public static void main(String[] args) {
 		for (String arg : args) {
 			switch(arg) {
 				case "headless":
 					HEADLESS = true; break;
+				case "evolve":
+					EVOLVE = true; break;
 				default:
 					break;
 			}
@@ -17,6 +21,15 @@ public class PlayerSkeleton {
 	}
 
 	public PlayerSkeleton() {
+		ForkJoinPool forkJoinPool = new ForkJoinPool();
+		if (EVOLVE) {
+			double fitness;
+			fitness = forkJoinPool.invoke(
+				new EvaluateChromosoneFitnessTask(Chromosone.createDefaultChromosone()));
+			System.out.println(fitness);
+			return;
+		}
+
 		State s = new State();
 		NeuralNet nn = new NeuralNet(Chromosone.createDefaultChromosone());
 
@@ -322,8 +335,63 @@ class StateUtils {
 			}
 		}
 
-		System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
+		// System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
 		return slot < maxSlots[s.nextPiece][orient] ? slot : -1;
+	}
+}
+
+class EvaluateChromosoneFitnessTask extends RecursiveTask<Double> {
+	private Chromosone chromosone;
+	private boolean isSubTask;
+	public EvaluateChromosoneFitnessTask(Chromosone chromosone) {
+		this.chromosone = chromosone;
+		this.isSubTask = false;
+	}
+	public EvaluateChromosoneFitnessTask(Chromosone chromosone, boolean isSubTask) {
+		this.chromosone = chromosone;
+		this.isSubTask = isSubTask;
+	}
+	@Override
+	protected Double compute() {
+		if (!isSubTask) {
+			return ForkJoinTask.invokeAll(createSubtasks())
+				.stream()
+				.mapToDouble(ForkJoinTask::join)
+				.sum() / Params.FITNESS_EVALUATIONS;
+		} else {
+			return evaluateChromosoneFitness();
+		}
+	}
+
+	private Collection<EvaluateChromosoneFitnessTask> createSubtasks() {
+		List<EvaluateChromosoneFitnessTask> dividedTasks = new ArrayList<>();
+		for (int i=0; i<Params.FITNESS_EVALUATIONS; i++)
+			dividedTasks.add(new EvaluateChromosoneFitnessTask(chromosone, true));
+		return dividedTasks;
+	}
+
+	private double evaluateChromosoneFitness() {
+		State s = new State();
+		NeuralNet nn = new NeuralNet(chromosone);
+		int moves = 0;
+
+		while(!s.hasLost()) {
+			nn.activate(StateUtils.normalize(s));
+			List<Double> output = nn.getOutput();
+
+			int orient = StateUtils.getOrient(s, output);
+			int slot = StateUtils.getSlot(s, orient, output);
+			if (slot == -1) {
+				s.lost = true;
+				continue;
+			}
+			s.makeMove(orient, slot);
+			moves += 1;
+		}
+
+		double fitness = (double) s.getRowsCleared();
+		fitness = fitness == 0 ? moves / 100.0 : fitness;
+		return fitness;
 	}
 }
 
@@ -335,6 +403,7 @@ class Params {
 	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
 	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
 	
+	public static final int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosone to be averaged
 	public static final int POPULATION_SIZE = 200; // Population Size
 	public static final double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
 	public static final double MAXIMUM_STAGNATION = 15; // Generations of non-improvement before species is culled

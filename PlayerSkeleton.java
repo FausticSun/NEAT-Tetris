@@ -334,6 +334,21 @@ class Params {
 	public static final int INPUT_START_INDEX = 1;
 	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
 	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+	
+	public static final int POPULATION_SIZE = 200; // Population Size
+	public static final double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
+	public static final double MAXIMUM_STAGNATION = 15; // Generations of non-improvement before species is culled
+	public static final double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
+	public static final double WEIGHT_MUTATION_CHANCE = 0.025; // Chance of weight of gene being changed
+	public static final double NODE_MUTATION_CHANCE = 0.03; // Chance of inserting a new node 
+	public static final double LINK_MUTATION_CHANCE = 0.05; // Chance of inserting a new link
+	public static final double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
+	public static final double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
+	public static final double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
+	public static final double COMPATIBILITY_THRESHOLD = 3; // Threshold for measuring species compatibility
+	public static final double C1 = 1; // Coefficient for importance of excess genes in measuring compatibility
+	public static final double C2 = 1; // Coefficient for disjoint genes
+	public static final double C3 = 3; // Coefficient for average weight difference
 }
 
 class Globals {

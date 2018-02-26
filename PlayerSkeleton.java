@@ -203,6 +203,16 @@ class Calc {
 	}
 }
 
+class Population {
+	List<Chromosone> chromosones;
+	List<Species> species;
+}
+
+class Species {
+	List<Chromosone> chromosones;
+	Chromosone representative;
+}
+
 class Gene {
 	public int id;
 	public int from;

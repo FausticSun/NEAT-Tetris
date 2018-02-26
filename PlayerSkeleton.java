@@ -76,26 +76,26 @@ class NeuralNet {
 		neurons.get(0).isActive = true;
 		
 		// Setup Input Neurons
-		for (int i=1; i<Params.INPUT_SIZE; i++) {
+		for (int i=Params.INPUT_START_INDEX; i<Params.OUTPUT_START_INDEX; i++) {
 			n = neurons.get(i);
 			n.type = ActivationType.LINEAR;
 			n.isActive = true;
 		}
 
 		// Setup Output Neurons
-		for (int i=Params.INPUT_SIZE; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
 			neurons.get(i).type = ActivationType.LINEAR;
 		}
 
 		// Setup Hidden Neurons
-		for (int i=Params.INPUT_SIZE+Params.OUTPUT_SIZE+1; i<neurons.size(); i++) {
+		for (int i=Params.HIDDEN_START_INDEX; i<neurons.size(); i++) {
 			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 	}
 
 	public boolean activate(List<Double> inputs) {
 		// Check input size
-		if (inputs.size() != Params.INPUT_SIZE-1) {
+		if (inputs.size() != Params.INPUT_SIZE) {
 			System.out.println("Input size mismatch!");
 			return false;
 		}
@@ -104,13 +104,12 @@ class NeuralNet {
 		reset();
 
 		// Set Input Neurons
-		for (int i=0; i<Params.INPUT_SIZE-1; i++) {
-			neurons.get(i+1).value = inputs.get(i);
+		for (int i=0; i<Params.INPUT_SIZE; i++) {
+			neurons.get(Params.INPUT_START_INDEX+i).value = inputs.get(i);
 		}
 
 		// Activate Output Neurons
-		for (int i=Params.INPUT_SIZE; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
-			System.out.println("Activating " + i);
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
 			neurons.get(i).activate();
 		}
 
@@ -119,14 +118,14 @@ class NeuralNet {
 
 	public List<Double> getOutput() {
 		List<Double> output = new ArrayList<Double>();
-		for (int i=Params.INPUT_SIZE+1; i<=Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
 			output.add(neurons.get(i).value);
 		}
 		return output;
 	}
 
 	public void reset() {
-		for (int i=Params.INPUT_SIZE; i<neurons.size(); i++) {
+		for (int i=Params.OUTPUT_START_INDEX; i<neurons.size(); i++) {
 			neurons.get(i).isActive = false;
 		}
 	}
@@ -212,13 +211,13 @@ class Chromosone {
 
 	public static Chromosone createDefaultChromosone() {
 		Chromosone c = new Chromosone();
-		int hid = Globals.NEURON_COUNT-1;
+		int hid = Params.HIDDEN_START_INDEX;
 		// Connect input neurons to a single hidden neuron
-		for (int i=0; i<Params.INPUT_SIZE; i++) {
+		for (int i=0; i<Params.OUTPUT_START_INDEX; i++) {
 			c.genes.add(new Gene(Globals.getInnovationId(), i, hid, Math.random()*2-1));
 		}
 		// Connect single hidden neuron to output neurons
-		for (int i=Params.INPUT_SIZE+1; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
 			c.genes.add(new Gene(Globals.getInnovationId(), hid, i, Math.random()*2-1));
 		}
 
@@ -255,7 +254,7 @@ class StateUtils {
 
 		return inputs;
 	}
-	
+
 	// TODO: Convert NeuralNet output to a move
 	public static int moveOrient(List<Double> outputs) {
 		return 0;
@@ -267,12 +266,16 @@ class StateUtils {
 }
 
 class Params {
-	public static final int INPUT_SIZE = 1+State.ROWS*State.COLS+State.N_PIECES;
+	public static final int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
 	public static final int OUTPUT_SIZE = 4+State.COLS;
+	public static final int BIAS_START_INDEX = 0;
+	public static final int INPUT_START_INDEX = 1;
+	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
+	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
 }
 
 class Globals {
-	public static int NEURON_COUNT = Params.INPUT_SIZE+Params.OUTPUT_SIZE+1;
+	public static int NEURON_COUNT = Params.HIDDEN_START_INDEX+1;
 	public static int INNOVATION_COUNT = 0;
 
 	public static int getInnovationId() {

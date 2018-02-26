@@ -1,4 +1,5 @@
-import java.util.Scanner;
+import java.util.*;
+import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
 	static boolean HEADLESS = false;
@@ -17,10 +18,14 @@ public class PlayerSkeleton {
 
 	public PlayerSkeleton() {
 		State s = new State();
+		NeuralNet nn = new NeuralNet(Chromosone.createDefaultChromosone());
+
 		if (!HEADLESS)
 			new TFrame(s);
 		while(!s.hasLost()) {
+			nn.activate(StateUtils.normalize(s));
 			s.makeMove(pickMove(s,s.legalMoves()));
+
 			if (!HEADLESS) {
 				s.draw();
 				s.drawNext(0,0);
@@ -37,5 +42,241 @@ public class PlayerSkeleton {
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		return 0;
+	}
+}
+
+// Feed-forward neural network
+// Neurons are arranged in the List from Input, Output and Hidden
+class NeuralNet {
+	public List<Neuron> neurons;
+	public Chromosone chromosone;
+	public NeuralNet(Chromosone chromosone) {
+		this.chromosone = chromosone;
+		
+		// DEBUG: Prints the chromosone on creation
+		// for (Gene g: chromosone.genes) {
+		// 	System.out.printf("ID: %d, From: %d, To: %d%n", g.id, g.from, g.to);
+		// }
+
+		// Create Neurons
+		neurons = new ArrayList<Neuron>();
+		for (int i=0; i<chromosone.neuronCount; i++)
+			neurons.add(new Neuron());
+
+		// Insert links
+		Neuron n;
+		for (Gene g: chromosone.genes) {
+			n = neurons.get(g.to);
+			n.incomingNeurons.add(neurons.get(g.from));
+			n.incomingWeights.add(g.weight);
+		}
+
+		// Setup Bias Neuron
+		neurons.get(0).type = ActivationType.BIAS;
+		neurons.get(0).isActive = true;
+		
+		// Setup Input Neurons
+		for (int i=1; i<Params.INPUT_SIZE; i++) {
+			n = neurons.get(i);
+			n.type = ActivationType.LINEAR;
+			n.isActive = true;
+		}
+
+		// Setup Output Neurons
+		for (int i=Params.INPUT_SIZE; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+			neurons.get(i).type = ActivationType.LINEAR;
+		}
+
+		// Setup Hidden Neurons
+		for (int i=Params.INPUT_SIZE+Params.OUTPUT_SIZE+1; i<neurons.size(); i++) {
+			neurons.get(i).type = ActivationType.SIGMOID;
+		}
+	}
+
+	public boolean activate(List<Double> inputs) {
+		// Check input size
+		if (inputs.size() != Params.INPUT_SIZE-1) {
+			System.out.println("Input size mismatch!");
+			return false;
+		}
+
+		// Clear the network
+		reset();
+
+		// Set Input Neurons
+		for (int i=0; i<Params.INPUT_SIZE-1; i++) {
+			neurons.get(i+1).value = inputs.get(i);
+		}
+
+		// Activate Output Neurons
+		for (int i=Params.INPUT_SIZE; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+			System.out.println("Activating " + i);
+			neurons.get(i).activate();
+		}
+
+		return true;
+	}
+
+	public List<Double> getOutput() {
+		List<Double> output = new ArrayList<Double>();
+		for (int i=Params.INPUT_SIZE+1; i<=Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+			output.add(neurons.get(i).value);
+		}
+		return output;
+	}
+
+	public void reset() {
+		for (int i=Params.INPUT_SIZE; i<neurons.size(); i++) {
+			neurons.get(i).isActive = false;
+		}
+	}
+}
+
+class Neuron {
+	public List<Neuron> incomingNeurons;
+	public List<Double> incomingWeights;
+	public ActivationType type;
+	public double value;
+	public boolean isActive;
+
+	public Neuron() {
+		this.incomingNeurons = new ArrayList<Neuron>();
+		this.incomingWeights = new ArrayList<Double>();
+		this.type = ActivationType.SIGMOID;
+		this.value = 0;
+		this.isActive = false;
+	}
+
+	// Recursively activate dependent neurons
+	public void activate() {
+		double sum = 0;
+		Neuron n;
+		for (int i=0; i<incomingNeurons.size(); i++) {
+			n = incomingNeurons.get(i);
+			if(!n.isActive) {
+				n.activate();
+			}
+			sum += n.value * incomingWeights.get(i);
+		}
+		switch (this.type) {
+			case BIAS: this.value = 1;
+			case LINEAR: this.value = sum; break;
+			case SIGMOID: this.value = Calc.sigmoid(sum); break;
+		}
+		this.isActive = true;
+	}
+}
+
+enum ActivationType {
+	LINEAR, SIGMOID, BIAS
+}
+
+class Calc {
+	public static double sigmoid(double x) {
+		return 1 / (1 + Math.exp(-x));
+	}
+}
+
+class Gene {
+	public int id;
+	public int from;
+	public int to;
+	public double weight;
+	public boolean isEnabled;
+
+	public Gene() {
+		this.id = 0;
+		this.from = 0;
+		this.to = 0;
+		this.weight = 0;
+		this.isEnabled = true;
+	}
+
+	public Gene(int id, int from, int to, double weight) {
+		this.id = id;
+		this.from = from;
+		this.to = to;
+		this.weight = weight;
+		this.isEnabled = true;
+	}
+}
+
+class Chromosone {
+	public int neuronCount;
+	public List<Gene> genes;
+
+	public Chromosone() {
+		neuronCount = Globals.NEURON_COUNT;
+		genes = new ArrayList<Gene>();
+	}
+
+	public static Chromosone createDefaultChromosone() {
+		Chromosone c = new Chromosone();
+		int hid = Globals.NEURON_COUNT-1;
+		// Connect input neurons to a single hidden neuron
+		for (int i=0; i<Params.INPUT_SIZE; i++) {
+			c.genes.add(new Gene(Globals.getInnovationId(), i, hid, Math.random()*2-1));
+		}
+		// Connect single hidden neuron to output neurons
+		for (int i=Params.INPUT_SIZE+1; i<Params.INPUT_SIZE+Params.OUTPUT_SIZE; i++) {
+			c.genes.add(new Gene(Globals.getInnovationId(), hid, i, Math.random()*2-1));
+		}
+
+		return c;
+	}
+}
+
+class FittestChromosone {
+	public String xml;
+	public FittestChromosone() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("");
+		xml = sb.toString();
+	}
+}
+
+class StateUtils {
+	public static List<Double> normalize(State s) {
+		List<Double> inputs = new ArrayList<Double>();
+
+		// Convert field to binary input
+		int[][] field = s.getField();
+		for (int i=0; i<State.ROWS; i++) {
+			for (int j=0; j<State.COLS; j++) {
+				inputs.add(field[i][j] == 0 ? 0.0 : 1.0);
+			}
+		}
+
+		// Convert next piece to one-hot input
+		int nextPiece = s.getNextPiece();
+		for (int i=0; i<State.N_PIECES; i++) {
+			inputs.add(i == nextPiece ? 1.0 : 0.0);
+		}
+
+		return inputs;
+	}
+	
+	// TODO: Convert NeuralNet output to a move
+	public static int moveOrient(List<Double> outputs) {
+		return 0;
+	}
+
+	public static int moveCol(List<Double> outputs) {
+		return 0;
+	}
+}
+
+class Params {
+	public static final int INPUT_SIZE = 1+State.ROWS*State.COLS+State.N_PIECES;
+	public static final int OUTPUT_SIZE = 4+State.COLS;
+}
+
+class Globals {
+	public static int NEURON_COUNT = Params.INPUT_SIZE+Params.OUTPUT_SIZE+1;
+	public static int INNOVATION_COUNT = 0;
+
+	public static int getInnovationId() {
+		INNOVATION_COUNT++;
+		return INNOVATION_COUNT;
 	}
 }

@@ -228,6 +228,14 @@ class Gene {
 		this.isEnabled = true;
 	}
 
+	public Gene(Gene other) {
+		this.id = other.id;
+		this.from = other.from;
+		this.to = other.to;
+		this.weight = other.weight;
+		this.isEnabled = other.isEnabled;
+	}
+
 	public Gene(int id, int from, int to, double weight) {
 		this.id = id;
 		this.from = from;
@@ -240,10 +248,23 @@ class Gene {
 class Chromosone {
 	public int neuronCount;
 	public List<Gene> genes;
+	public double fitness;
+	public int id;
 
 	public Chromosone() {
 		neuronCount = Globals.NEURON_COUNT;
 		genes = new ArrayList<Gene>();
+		fitness = -1;
+		id = Globals.getChromosoneId();
+	}
+
+	public Chromosone(Chromosone other) {
+		this.neuronCount = other.neuronCount;
+		this.genes = new ArrayList<Gene>();
+		for (Gene g: other.genes)
+			this.genes.add(new Gene(g));
+		this.fitness = other.fitness;
+		this.id = Globals.getChromosoneId();
 	}
 
 	public static Chromosone createDefaultChromosone() {
@@ -433,9 +454,15 @@ class Params {
 class Globals {
 	public static int NEURON_COUNT = Params.HIDDEN_START_INDEX+1;
 	public static int INNOVATION_COUNT = 0;
+	public static int CHROMOSONE_COUNT = 0;
 
 	public static int getInnovationId() {
 		INNOVATION_COUNT++;
 		return INNOVATION_COUNT;
+	}
+
+	public static int getChromosoneId() {
+		CHROMOSONE_COUNT++;
+		return CHROMOSONE_COUNT;
 	}
 }

@@ -24,7 +24,21 @@ public class PlayerSkeleton {
 			new TFrame(s);
 		while(!s.hasLost()) {
 			nn.activate(StateUtils.normalize(s));
-			s.makeMove(pickMove(s,s.legalMoves()));
+			List<Double> output = nn.getOutput();
+			
+			// DEUBG: Output output weights
+			// for (double d: output)
+			// 	System.out.format("%.3f ", d);
+			// System.out.format("%n");
+
+			int orient = StateUtils.getOrient(s, output);
+			int slot = StateUtils.getSlot(s, orient, output);
+			if (slot == -1) {
+				s.lost = true;
+				continue;
+			}
+
+			s.makeMove(orient, slot);
 
 			if (!HEADLESS) {
 				s.draw();
@@ -84,7 +98,7 @@ class NeuralNet {
 
 		// Setup Output Neurons
 		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			neurons.get(i).type = ActivationType.LINEAR;
+			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 
 		// Setup Hidden Neurons
@@ -235,6 +249,21 @@ class FittestChromosone {
 }
 
 class StateUtils {
+	public static int[][] maxSlots = new int[State.N_PIECES][];
+	static {
+		for (int i=0; i<State.N_PIECES; i++) {
+			int[][] moves = State.legalMoves[i];
+			maxSlots[i] = new int[State.pOrients[i]];
+			for (int j=0; j<State.pOrients[i]; j++) {
+				for (int[] move: moves) {
+					if (move[State.ORIENT] == j) {
+						maxSlots[i][j]++;
+					}
+				}
+			}
+		}
+	}
+
 	public static List<Double> normalize(State s) {
 		List<Double> inputs = new ArrayList<Double>();
 
@@ -255,13 +284,41 @@ class StateUtils {
 		return inputs;
 	}
 
-	// TODO: Convert NeuralNet output to a move
-	public static int moveOrient(List<Double> outputs) {
-		return 0;
+	public static int getOrient(State s, List<Double> outputs) {
+		int nextPiece = s.getNextPiece();
+		double max = outputs.get(0);
+		int orient = 0;
+		for (int i=1; i<4; i++) {
+			if (outputs.get(i) > max) {
+				max = outputs.get(i);
+				orient = i;
+			}
+		}
+		switch(nextPiece) {
+			case 0:
+				return 0;
+			case 1:
+			case 5:
+			case 6:
+				return orient/2;
+			default:
+				return orient;
+		}
 	}
 
-	public static int moveCol(List<Double> outputs) {
-		return 0;
+	// Return -1 if dropping in an invalid slot
+	public static int getSlot(State s, int orient, List<Double> outputs) {
+		double max = outputs.get(4);
+		int slot = 0;
+		for (int i=5; i<outputs.size(); i++) {
+			if (outputs.get(i) > max) {
+				max = outputs.get(i);
+				slot = i-4;
+			}
+		}
+		
+		System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
+		return slot < maxSlots[s.nextPiece][orient] ? slot : -1;
 	}
 }
 

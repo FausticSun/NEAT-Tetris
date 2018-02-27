@@ -105,6 +105,13 @@ public class PlayerSkeleton {
 class NeuralNet {
 	public List<Neuron> neurons;
 	public Chromosone chromosone;
+	
+	/**
+	 * A neural net built based on a specific chromosone data.
+	 * Call activate() to pass in the input and then getOuput() later.
+	 *
+	 * @param chromosone The chromosone to create the neural net information.
+	 */
 	public NeuralNet(Chromosone chromosone) {
 		this.chromosone = chromosone;
 		
@@ -121,9 +128,11 @@ class NeuralNet {
 		// Insert links
 		Neuron n;
 		for (Gene g: chromosone.genes) {
-			n = neurons.get(g.to);
-			n.incomingNeurons.add(neurons.get(g.from));
-			n.incomingWeights.add(g.weight);
+			if(g.isEnabled) {
+				n = neurons.get(g.to);
+				n.incomingNeurons.add(neurons.get(g.from));
+				n.incomingWeights.add(g.weight);
+			}
 		}
 
 		// Setup Bias Neuron
@@ -147,7 +156,13 @@ class NeuralNet {
 			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 	}
-
+	
+	/**
+	 * Places these inputs into the neural net input neurons.
+	 *
+	 * @param inputs The list of inputs from the screen and the current piece.
+	 * @return True if successful, false otherwise.
+	 */
 	public boolean activate(List<Double> inputs) {
 		// Check input size
 		if (inputs.size() != Params.INPUT_SIZE) {
@@ -170,7 +185,13 @@ class NeuralNet {
 
 		return true;
 	}
-
+	
+	/**
+	 * Gets the output of the neural net.
+	 * Call this after you call activate and pass in the inputs.
+	 *
+	 * @return The list of outputs from the chromosone.
+	 */
 	public List<Double> getOutput() {
 		List<Double> output = new ArrayList<Double>();
 		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
@@ -186,6 +207,10 @@ class NeuralNet {
 	}
 }
 
+/**
+ * Neuron refers to a specific node, be in input, output, hidden or bias. 
+ * This stores information about the node, incoming neurons and their weights.
+ */
 class Neuron {
 	public List<Neuron> incomingNeurons;
 	public List<Double> incomingWeights;
@@ -200,8 +225,10 @@ class Neuron {
 		this.value = 0;
 		this.isActive = false;
 	}
-
-	// Recursively activate dependent neurons
+	
+	/**
+	 * Recursively activate dependent neurons
+	 */
 	public void activate() {
 		double sum = 0;
 		Neuron n;
@@ -309,6 +336,14 @@ class Chromosone {
 
 		return c;
 	}
+
+	public Chromosone clone() {
+		Chromosone c = new Chromosone();
+		c.genes.addAll(this.genes);
+		c.fitness = this.fitness;
+		//TODO set ID maybe?
+		return c;
+	}
 }
 
 class FittestChromosone {
@@ -320,6 +355,10 @@ class FittestChromosone {
 	}
 }
 
+/**
+ * Static utility function that may prove useful.
+ *
+ */
 class StateUtils {
 	// Maximum legal slots given piece type and orient
 	public static int[][] maxSlots = new int[State.N_PIECES][];
@@ -360,7 +399,7 @@ class StateUtils {
 
 		return inputs;
 	}
-
+	
 	public static int getOrient(State s, List<Double> outputs) {
 		int nextPiece = s.getNextPiece();
 		double max = outputs.get(0);
@@ -382,8 +421,14 @@ class StateUtils {
 				return orient;
 		}
 	}
-
-	// Return -1 if dropping in an invalid slot
+	
+	/**
+	 *
+	 * @param s
+	 * @param orient
+	 * @param outputs
+	 * @return -1 if dropping in an invalid slot
+	 */
 	public static int getSlot(State s, int orient, List<Double> outputs) {
 		double max = outputs.get(4);
 		int slot = 0;
@@ -399,6 +444,13 @@ class StateUtils {
 	}
 }
 
+/**
+ * Evaluates the fitness task for that chromosone a number of times equal to Params.FITNESS_EVALUATIONS,
+ * then returns the average of those fitness evaluations.
+ *
+ * Use by passing in the chromosone, then call create subtasks which will spawn the required
+ * number of worker threads to do the simulation.
+ */
 class EvaluateChromosoneFitnessTask extends RecursiveTask<Double> {
 	private Chromosone chromosone;
 	private boolean isSubTask;

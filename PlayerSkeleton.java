@@ -441,8 +441,10 @@ class EvaluatePopulationFitnessTask extends RecursiveTask<Double> {
 	}
 
 	private void evaluatePopulationFitness() {
-		for (Chromosone chromosone : population)
+		for (Chromosone chromosone : population) {
+			System.out.println("Current chromosone being tested: " + chromosone.id);
 			chromosone.fitness = (new EvaluateChromosoneFitnessTask(chromosone).compute());
+		}
 	}
 }
 

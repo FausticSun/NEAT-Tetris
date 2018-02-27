@@ -23,17 +23,10 @@ public class PlayerSkeleton {
 	public PlayerSkeleton() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		if (EVOLVE) {
-			//double fitness;
-			List<Chromosone> population = new ArrayList<Chromosone>();
-			for (int i=0; i<Params.POPULATION_SIZE; i++){
-				population.add(Chromosone.createDefaultChromosone());
-			}
-			forkJoinPool.invoke(
-					new EvaluatePopulationFitnessTask(population));
-			//fitness = forkJoinPool.invoke(
-			//	new EvaluateChromosoneFitnessTask(Chromosone.createDefaultChromosone()));
-			for (Chromosone chromosone : population)
-				System.out.println("Chromosone #: " + chromosone.id + ", fitness: " + chromosone.fitness);
+			double fitness;
+			fitness = forkJoinPool.invoke(
+				new EvaluateChromosoneFitnessTask(Chromosone.createDefaultChromosone()));
+			System.out.println(fitness);
 			return;
 		}
 
@@ -237,6 +230,16 @@ class Calc {
 	}
 }
 
+class Population {
+	List<Chromosone> chromosones;
+	List<Species> species;
+}
+
+class Species {
+	List<Chromosone> chromosones;
+	Chromosone representative;
+}
+
 class Gene {
 	public int id;
 	public int from;
@@ -250,6 +253,14 @@ class Gene {
 		this.to = 0;
 		this.weight = 0;
 		this.isEnabled = true;
+	}
+
+	public Gene(Gene other) {
+		this.id = other.id;
+		this.from = other.from;
+		this.to = other.to;
+		this.weight = other.weight;
+		this.isEnabled = other.isEnabled;
 	}
 
 	public Gene(int id, int from, int to, double weight) {
@@ -272,6 +283,15 @@ class Chromosone {
 		genes = new ArrayList<Gene>();
 		fitness = -1;
 		id = Globals.getChromosoneId();
+	}
+
+	public Chromosone(Chromosone other) {
+		this.neuronCount = other.neuronCount;
+		this.genes = new ArrayList<Gene>();
+		for (Gene g: other.genes)
+			this.genes.add(new Gene(g));
+		this.fitness = other.fitness;
+		this.id = Globals.getChromosoneId();
 	}
 
 	public static Chromosone createDefaultChromosone() {

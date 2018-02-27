@@ -23,17 +23,37 @@ public class PlayerSkeleton {
 	public PlayerSkeleton() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		if (EVOLVE) {
-			//double fitness;
+
+			// populate chromosomes
 			List<Chromosone> population = new ArrayList<Chromosone>();
 			for (int i=0; i<Params.POPULATION_SIZE; i++){
 				population.add(Chromosone.createDefaultChromosone());
 			}
-			forkJoinPool.invoke(
-					new EvaluatePopulationFitnessTask(population));
-			//fitness = forkJoinPool.invoke(
-			//	new EvaluateChromosoneFitnessTask(Chromosone.createDefaultChromosone()));
-			for (Chromosone chromosone : population)
-				System.out.println("Chromosone #: " + chromosone.id + ", fitness: " + chromosone.fitness);
+
+			// TODO split chromosones into species
+
+			//run NEAT
+			for (int i=0; i<Params.GENERATION_LIMITl i++){
+
+				//evaluate fitness of chromosones
+				//double fitness;
+				forkJoinPool.invoke(
+						new EvaluatePopulationFitnessTask(population));
+				//fitness = forkJoinPool.invoke(
+				//	new EvaluateChromosoneFitnessTask(Chromosone.createDefaultChromosone()));
+				for (Chromosone chromosone : population)
+					System.out.println("Chromosone #: " + chromosone.id + ", fitness: " + chromosone.fitness);
+
+				// TODO if fitness limit reached, break
+
+				// TODO cull stagnant species if max not improving
+
+				// TODO if survival threshhold not reached, cull underperformers in each species
+
+				// TODO breed children in each species and mutate them
+				// evaluate which species children get put into
+				// note: children can be crossbred
+			}
 			return;
 		}
 
@@ -455,6 +475,8 @@ class Params {
 	public static final int INPUT_START_INDEX = 1;
 	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
 	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+	public static final int GENERATION_LIMIT = 200; //Number of iterations
+	public static final double FITNESS_LIMIT = 0.98; //Value for which we automatically end the search
 	
 	public static final int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosone to be averaged
 	public static final int POPULATION_SIZE = 200; // Population Size

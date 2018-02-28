@@ -993,39 +993,45 @@ class EvaluateChromosoneFitnessTask extends RecursiveTask<Double> {
 	}
 }
 
-class EvaluatePopulationFitnessTask extends RecursiveAction {
+class EvaluatePopulationFitnessTask extends RecursiveTask<Double> {
 	private List<Chromosone> population;
-	private Chromosone chromosone;
 	private boolean isSubTask;
-
 	public EvaluatePopulationFitnessTask(List<Chromosone> population) {
 		this.population = population;
 		this.isSubTask = false;
 	}
-	public EvaluatePopulationFitnessTask(Chromosone chromosone, boolean isSubTask) {
-		this.chromosone = chromosone;
+	public EvaluatePopulationFitnessTask(List<Chromosone> population, boolean isSubTask) {
+		this.population = population;
 		this.isSubTask = isSubTask;
 	}
-
 	@Override
-	protected void compute() {
+	protected Double compute() {
 		if (!isSubTask) {
-			ForkJoinTask.invokeAll(createSubtasks());
+			ForkJoinTask.invokeAll(createSubtasks())
+				.stream()
+				.mapToDouble(ForkJoinTask::join);
 		} else {
-			evaluateChromosoneFitness();
+			evaluatePopulationFitness();
 		}
+		return 0.0;
 	}
 
 	private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
 		List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<EvaluatePopulationFitnessTask>();
-		for (Chromosone c: population) {
-			dividedTasks.add(new EvaluatePopulationFitnessTask(c, true));
+		List<Chromosone> tempList;
+		for (int i=0; i<population.size(); i++) {
+			tempList = new ArrayList<Chromosone>();
+			tempList.add(population.get(i));
+			dividedTasks.add(new EvaluatePopulationFitnessTask(tempList, true));
 		}
 		return dividedTasks;
 	}
 
-	private void evaluateChromosoneFitness() {
-		chromosone.fitness = (new EvaluateChromosoneFitnessTask(chromosone).compute());
+	private void evaluatePopulationFitness() {
+		for (Chromosone chromosone : population) {
+			//System.out.println("Current chromosone being tested: " + chromosone.id);
+			chromosone.fitness = (new EvaluateChromosoneFitnessTask(chromosone).compute());
+		}
 	}
 }
 

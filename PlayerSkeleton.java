@@ -638,9 +638,81 @@ class Chromosone implements Comparable<Chromosone>{
 		c.fitness = this.fitness;
 		//TODO set ID maybe?
 		return c;
+
+	/**
+	 * computes distance between genes compared to another chromosone
+	 * used for species placement
+	 * @return
+	 */
+	public double computeGeneDistance(Chromosone other) {
+		double distance = 0;
+		double NormalizeValue = Math.max(genes.size(), other.genes.size());
+		Collections.sort(genes);
+		Collections.sort(other.genes);
+		double largestDisjointValue = Math.min(genes.get(genes.size()-1).id,other.genes.get(other.genes.size()-1).id);
+		double totalWeightDifferenceOfMatchingGenes = 0;
+		double numberOfDisjointGenes = 0;
+		double numberOfMatchingGenes = 0;
+		double numberOfExcessGenes = 0;
+
+		// TODO proper algorithm. I was braindead and did the not efficient one
+		boolean matchFound;
+		for (Gene gene1 : genes) {
+			matchFound = false;
+			for (Gene gene2 : other.genes) { //check if it has a match
+				if (gene1.id == gene2.id) {
+					totalWeightDifferenceOfMatchingGenes += Math.abs(gene1.weight - gene2.weight);
+					numberOfMatchingGenes++;
+					matchFound = true;
+					break;
+				}
+				if (gene1.id < gene2.id) { //too far to have a match
+					break;
+				}
+			}
+			//no match
+			if (!matchFound) {
+				if (gene1.id <= largestDisjointValue) { //disjoint value
+					numberOfDisjointGenes ++;
+				}
+				else { //excess value
+					numberOfExcessGenes ++;
+				}
+			}
+		}
+
+		//do the same for gene2, except it doesn't need to add to weight difference
+		for (Gene gene1 : other.genes) {
+			matchFound = false;
+			for (Gene gene2 : genes) { //check if it has a match
+				if (gene1.id == gene2.id) {
+					matchFound = true;
+					break;
+				}
+				if (gene1.id < gene2.id) { //too far to have a match
+					break;
+				}
+			}
+			//no match
+			if (!matchFound) {
+				if (gene1.id <= largestDisjointValue) { //disjoint value
+					numberOfDisjointGenes ++;
+				}
+				else { //excess value
+					numberOfExcessGenes ++;
+				}
+			}
+		}
+
+		distance += Params.C1 * numberOfExcessGenes / NormalizeValue;
+		distance += Params.C2 * numberOfDisjointGenes / NormalizeValue;
+		distance += Params.C3 * totalWeightDifferenceOfMatchingGenes / numberOfMatchingGenes;
+		//System.out.println("geneDistance: " + distance + ", Chrom 1: " + id + ", Chrom 2: " + other.id);
+		return distance;
 	}
 }
 
+// TODO formatting for fittest chromosone
 class FittestChromosone {
 	public String xml;
 	public FittestChromosone() {

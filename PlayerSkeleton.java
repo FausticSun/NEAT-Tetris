@@ -615,6 +615,96 @@ class Chromosone implements Comparable<Chromosone>{
 		}
 		return chromosone;
 	}
+
+	/**
+	 * mutates the chromosone randomly:
+	 *  each gene can mutate weight or get disabled/enabled
+	 *  chromosone can gain a new node or link
+	 */
+	public void mutate() {
+		for (Gene gene : genes)
+			gene.mutate();
+		if (Math.random() < Params.LINK_MUTATION_CHANCE)
+			mutateLink();
+		if (Math.random() < Params.NODE_MUTATION_CHANCE)
+			mutateNode();
+	}
+
+	/**
+	 * mutates by creating a link
+	 * To make it easy for validation for now, only options are
+	 *  1) must start from a input node
+	 *  2) must end at a output node
+	 *  TODO: refine with bellman's ford instead
+	 */
+	public void mutateLink() {
+		int startNode = -1;
+		int endNode = -1;
+		boolean foundPair = false;
+		for (int i=0; i<10; i++) { //try this 5 times or until success
+			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
+			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
+			foundPair = true;
+
+			if (startNode == endNode)
+				foundPair = false;
+
+			//check if the gene is already in the chromosone
+			for (Gene gene : genes)
+				if (startNode == gene.from && endNode == gene.to)
+					foundPair = false;
+
+			//if we found a pair to match, exit loop
+			if (foundPair)
+				break;
+		}
+
+		if (!foundPair) //break if can't find suitable pair
+			return;
+
+		System.out.println("Mutating new link between node " + startNode + " and node " + endNode);
+		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
+		if (linkID == null) { //link does not exist yet
+			//check if link fits our easy restriction
+			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
+				System.out.println("Link between nodes do not exist yet, creating new link");
+				linkID = Globals.getInnovationId();
+				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
+			}
+			else {
+				System.out.println("Link is not valid, breaking out");
+				return;
+			}
+		}
+		genes.add(new Gene(linkID, startNode, endNode, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
+	}
+
+	/**
+	 * mutates by creating a node
+	 * can mutate a currently disabled node
+	 */
+	public void mutateNode() {
+		Gene chosenGene = genes.get((int) Math.floor(Math.random() * genes.size()));
+		genes.remove(chosenGene);
+		System.out.println("Mutating new node between node " + chosenGene.from + " and node " + chosenGene.to);
+		Integer geneID = Globals.NODE_MAP.get(chosenGene.from).get(chosenGene.to);
+		if (geneID == null) { //gene does not exist yet
+			System.out.println("node between nodes do not exist yet, creating new node");
+			//create new node from parents
+			geneID = Globals.getNodeId();
+			Globals.NODE_MAP.get(chosenGene.from).put(chosenGene.to, geneID);
+			Globals.NODE_MAP.get(chosenGene.to).put(chosenGene.from, geneID);
+
+			//create new links from parent to child
+			int linkID1 = Globals.getInnovationId();
+			Globals.INNOVATION_MAP.get(chosenGene.from).put(geneID, linkID1);
+			int linkID2 = Globals.getInnovationId();
+			Globals.INNOVATION_MAP.get(geneID).put(chosenGene.to, linkID2);
+		}
+		if (geneID > neuronCount)
+			neuronCount = geneID;
+		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
+		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
 	}
 
 	public static Chromosone createDefaultChromosone() {

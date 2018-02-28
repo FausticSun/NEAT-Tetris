@@ -710,13 +710,18 @@ class Chromosone implements Comparable<Chromosone>{
 	public static Chromosone createDefaultChromosone() {
 		Chromosone c = new Chromosone();
 		int hid = Params.HIDDEN_START_INDEX;
+
+		//defaultChromosone ids not set yet
+		if (Globals.INNOVATION_MAP.get(0) == null)
+			initializeStartingIds();
+
 		// Connect input neurons to a single hidden neuron
 		for (int i=0; i<Params.OUTPUT_START_INDEX; i++) {
-			c.genes.add(new Gene(Globals.getInnovationId(), i, hid, Math.random()*2-1));
+			c.genes.add(new Gene(i+1, i+1, hid+1, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
 		}
 		// Connect single hidden neuron to output neurons
 		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			c.genes.add(new Gene(Globals.getInnovationId(), hid, i, Math.random()*2-1));
+			c.genes.add(new Gene(i+1, hid+1, i+1, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
 		}
 
 		return c;
@@ -728,6 +733,23 @@ class Chromosone implements Comparable<Chromosone>{
 		c.fitness = this.fitness;
 		//TODO set ID maybe?
 		return c;
+	public static void initializeStartingIds() {
+		int hid = Params.HIDDEN_START_INDEX;
+		int currentID;
+		for (int i=0; i<Params.OUTPUT_START_INDEX; i++) {
+			Globals.getNodeId(); //initializes the node's existence
+			currentID = Globals.getInnovationId(); //initializes the link's existence
+			Globals.INNOVATION_MAP.get(i+1).put(hid+1, currentID);
+		}
+		Globals.getNodeId(); //initializes hidden's node
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+			Globals.getNodeId(); //initializes the node's existence
+		}
+		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+			currentID = Globals.getInnovationId(); //initializes the link's existence
+			Globals.INNOVATION_MAP.get(hid+1).put(i+1, currentID);
+		}
+	}
 
 	/**
 	 * computes distance between genes compared to another chromosone

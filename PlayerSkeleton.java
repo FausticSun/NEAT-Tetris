@@ -112,6 +112,33 @@ class Species {
 		speciesPopulation.add(representative);
 		speciesID = Globals.getSpeciesId();
 	}
+
+	/**
+	 * aggressively removes weaklings from the population
+	 */
+	public void cull(List<Chromosone> population) {
+		Collections.sort(speciesPopulation);
+		int limit = (int)Math.ceil(speciesPopulation.size() * Params.SURVIVAL_THRESHOLD);
+		speciesPopulation = speciesPopulation.subList(0, limit);
+		for (int i=limit; i< speciesPopulation.size(); i++) {
+			population.remove(speciesPopulation.get(i));
+		}
+	}
+
+	/**
+	 *
+	 * @return returns the average fitness of the chromosones in the species
+	 */
+	public double computeAverageFitness() {
+		if (speciesPopulation.size() == 0)
+			return 0;
+		double totalFitness = 0;
+		for (Chromosone chromosone : speciesPopulation)
+			totalFitness += chromosone.fitness;
+		System.out.println("Species ID: " + speciesID + ", PopSize : " + speciesPopulation.size() + ", AverageFitness = " + totalFitness/speciesPopulation.size());
+		averageFitness = totalFitness/speciesPopulation.size();
+		return averageFitness;
+	}
 }
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden

@@ -268,7 +268,7 @@ class Species {
 	Chromosone representative;
 }
 
-class Gene {
+class Gene implements Comparable<Gene>{
 	public int id;
 	public int from;
 	public int to;
@@ -297,6 +297,43 @@ class Gene {
 		this.to = to;
 		this.weight = weight;
 		this.isEnabled = true;
+	}
+
+	public void mutate() {
+		if (Math.random() < Params.DISABLE_MUTATION_CHANCE)
+			mutateDisable();
+		if (Math.random() < Params.ENABLE_MUTATION_CHANCE)
+			mutateEnable();
+		if (Math.random() < Params.WEIGHT_MUTATION_CHANCE)
+			mutateWeight();
+	}
+
+	public int compareTo(Gene other) {
+		return id - other.id;
+	}
+
+	/**
+	 * mutates by disabling a link
+	 */
+	public void mutateDisable() {
+		isEnabled = false;
+	}
+
+	/**
+	 * mutates by enabling a link
+	 */
+	public void mutateEnable() {
+		isEnabled = true;
+	}
+
+	/**
+	 * mutates by changing weight
+	 */
+	public void mutateWeight() {
+		if (Math.random() < 0.5)
+			weight += Math.random() * Params.WEIGHT_MUTATION_RANGE;
+		else
+			weight -= Math.random() * Params.WEIGHT_MUTATION_RANGE;
 	}
 }
 

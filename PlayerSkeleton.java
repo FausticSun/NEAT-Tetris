@@ -262,6 +262,7 @@ class Species {
 		return newChildren;
 	}
 }
+
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {
@@ -421,16 +422,6 @@ class Calc {
 	}
 }
 
-class Population {
-	List<Chromosone> chromosones;
-	List<Species> species;
-}
-
-class Species {
-	List<Chromosone> chromosones;
-	Chromosone representative;
-}
-
 class Gene implements Comparable<Gene>{
 	public int id;
 	public int from;
@@ -500,7 +491,7 @@ class Gene implements Comparable<Gene>{
 	}
 }
 
-class Chromosone implements Comparable<Chromosone>{
+class Chromosone implements Comparable<Chromosone> {
 	public int neuronCount;
 	public List<Gene> genes;
 	public double fitness;
@@ -516,12 +507,13 @@ class Chromosone implements Comparable<Chromosone>{
 	public Chromosone(Chromosone other) {
 		this.neuronCount = other.neuronCount;
 		this.genes = new ArrayList<Gene>();
-		for (Gene g: other.genes)
+		for (Gene g : other.genes)
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
 		this.id = Globals.getChromosoneId();
+	}
+
 	/**
-	 *
 	 * @param other - other chromosone being tested against
 	 * @return positive if better, negative if worse
 	 */
@@ -536,9 +528,10 @@ class Chromosone implements Comparable<Chromosone>{
 
 	/**
 	 * Breeds 2 chromosones together:
-	 *  Same ID genes get randomly picked from one parent
-	 *  Excess and Disjoint genes get picked from the better parent
-	 *  If both parents are the same, Excess and Disjoint genes get added from both
+	 * Same ID genes get randomly picked from one parent
+	 * Excess and Disjoint genes get picked from the better parent
+	 * If both parents are the same, Excess and Disjoint genes get added from both
+	 *
 	 * @param other - other chromosone being bred with
 	 * @return the baby chromosone
 	 */
@@ -569,7 +562,7 @@ class Chromosone implements Comparable<Chromosone>{
 			}
 			chromosone.neuronCount = neuronCount;
 		}
-		if  (other.fitness > fitness) { //other is base chromosone
+		if (other.fitness > fitness) { //other is base chromosone
 			boolean matchFound;
 			for (Gene gene1 : other.genes) {
 				matchFound = false;
@@ -619,8 +612,8 @@ class Chromosone implements Comparable<Chromosone>{
 
 	/**
 	 * mutates the chromosone randomly:
-	 *  each gene can mutate weight or get disabled/enabled
-	 *  chromosone can gain a new node or link
+	 * each gene can mutate weight or get disabled/enabled
+	 * chromosone can gain a new node or link
 	 */
 	public void mutate() {
 		for (Gene gene : genes)
@@ -634,15 +627,15 @@ class Chromosone implements Comparable<Chromosone>{
 	/**
 	 * mutates by creating a link
 	 * To make it easy for validation for now, only options are
-	 *  1) must start from a input node
-	 *  2) must end at a output node
-	 *  TODO: refine with bellman's ford instead
+	 * 1) must start from a input node
+	 * 2) must end at a output node
+	 * TODO: refine with bellman's ford instead
 	 */
 	public void mutateLink() {
 		int startNode = -1;
 		int endNode = -1;
 		boolean foundPair = false;
-		for (int i=0; i<10; i++) { //try this 5 times or until success
+		for (int i = 0; i < 10; i++) { //try this 5 times or until success
 			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
 			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
 			foundPair = true;
@@ -671,13 +664,12 @@ class Chromosone implements Comparable<Chromosone>{
 				System.out.println("Link between nodes do not exist yet, creating new link");
 				linkID = Globals.getInnovationId();
 				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
-			}
-			else {
+			} else {
 				System.out.println("Link is not valid, breaking out");
 				return;
 			}
 		}
-		genes.add(new Gene(linkID, startNode, endNode, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
+		genes.add(new Gene(linkID, startNode, endNode, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
 	}
 
 	/**
@@ -717,12 +709,12 @@ class Chromosone implements Comparable<Chromosone>{
 			initializeStartingIds();
 
 		// Connect input neurons to a single hidden neuron
-		for (int i=0; i<Params.OUTPUT_START_INDEX; i++) {
-			c.genes.add(new Gene(i+1, i+1, hid+1, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
+		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
+			c.genes.add(new Gene(i + 1, i + 1, hid + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
 		}
 		// Connect single hidden neuron to output neurons
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			c.genes.add(new Gene(i+1, hid+1, i+1, ((Math.random()*Params.WEIGHT_MUTATION_RANGE*2) - Params.WEIGHT_MUTATION_RANGE)));
+		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
+			c.genes.add(new Gene(i + 1, hid + 1, i + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
 		}
 
 		return c;
@@ -734,27 +726,31 @@ class Chromosone implements Comparable<Chromosone>{
 		c.fitness = this.fitness;
 		//TODO set ID maybe?
 		return c;
+	}
+
 	public static void initializeStartingIds() {
 		int hid = Params.HIDDEN_START_INDEX;
 		int currentID;
-		for (int i=0; i<Params.OUTPUT_START_INDEX; i++) {
+		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
 			Globals.getNodeId(); //initializes the node's existence
 			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(i+1).put(hid+1, currentID);
+			Globals.INNOVATION_MAP.get(i + 1).put(hid + 1, currentID);
 		}
 		Globals.getNodeId(); //initializes hidden's node
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
 			Globals.getNodeId(); //initializes the node's existence
 		}
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
 			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(hid+1).put(i+1, currentID);
+			Globals.INNOVATION_MAP.get(hid + 1).put(i + 1, currentID);
 		}
 	}
+
 
 	/**
 	 * computes distance between genes compared to another chromosone
 	 * used for species placement
+	 *
 	 * @return
 	 */
 	public double computeGeneDistance(Chromosone other) {
@@ -762,7 +758,7 @@ class Chromosone implements Comparable<Chromosone>{
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());
 		Collections.sort(genes);
 		Collections.sort(other.genes);
-		double largestDisjointValue = Math.min(genes.get(genes.size()-1).id,other.genes.get(other.genes.size()-1).id);
+		double largestDisjointValue = Math.min(genes.get(genes.size() - 1).id, other.genes.get(other.genes.size() - 1).id);
 		double totalWeightDifferenceOfMatchingGenes = 0;
 		double numberOfDisjointGenes = 0;
 		double numberOfMatchingGenes = 0;
@@ -786,10 +782,9 @@ class Chromosone implements Comparable<Chromosone>{
 			//no match
 			if (!matchFound) {
 				if (gene1.id <= largestDisjointValue) { //disjoint value
-					numberOfDisjointGenes ++;
-				}
-				else { //excess value
-					numberOfExcessGenes ++;
+					numberOfDisjointGenes++;
+				} else { //excess value
+					numberOfExcessGenes++;
 				}
 			}
 		}
@@ -809,10 +804,9 @@ class Chromosone implements Comparable<Chromosone>{
 			//no match
 			if (!matchFound) {
 				if (gene1.id <= largestDisjointValue) { //disjoint value
-					numberOfDisjointGenes ++;
-				}
-				else { //excess value
-					numberOfExcessGenes ++;
+					numberOfDisjointGenes++;
+				} else { //excess value
+					numberOfExcessGenes++;
 				}
 			}
 		}
@@ -988,7 +982,7 @@ class EvaluateChromosoneFitnessTask extends RecursiveTask<Double> {
 
 		double fitness = (double) s.getRowsCleared();
 		fitness = fitness == 0 ? moves / 100.0 : fitness;
-		System.out.printf("Chromsone #%d fitness computed with thread %s%n", chromosone.id, Thread.currentThread().getName());
+		//System.out.printf("Chromsone #%d fitness computed with thread %s%n", chromosone.id, Thread.currentThread().getName());
 		return fitness;
 	}
 }

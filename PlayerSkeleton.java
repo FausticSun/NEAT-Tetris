@@ -337,7 +337,7 @@ class Gene implements Comparable<Gene>{
 	}
 }
 
-class Chromosone {
+class Chromosone implements Comparable<Chromosone>{
 	public int neuronCount;
 	public List<Gene> genes;
 	public double fitness;
@@ -357,6 +357,20 @@ class Chromosone {
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
 		this.id = Globals.getChromosoneId();
+	/**
+	 *
+	 * @param other - other chromosone being tested against
+	 * @return positive if better, negative if worse
+	 */
+	public int compareTo(Chromosone other) {
+		if (this.fitness > other.fitness)
+			return 1;
+		else if (this.fitness > other.fitness)
+			return -1;
+		else
+			return 0;
+	}
+
 	/**
 	 * Breeds 2 chromosones together:
 	 *  Same ID genes get randomly picked from one parent

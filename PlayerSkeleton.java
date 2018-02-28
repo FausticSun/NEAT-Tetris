@@ -55,7 +55,17 @@ public class PlayerSkeleton {
 				for (Chromosone chromosone : population)
 					System.out.println("Chromosone #: " + chromosone.id + ", fitness: " + chromosone.fitness);
 
-				// TODO if fitness limit reached, break
+				//update fitness and check stagnation
+				updateFittest(population, fittestChromosone);
+				if (highestFitness < fittestChromosone.fitness) {
+					highestFitness = fittestChromosone.fitness;
+					currentStagnation = 0;
+				} else {
+					currentStagnation++;
+				}
+				//if fitness limit reached, break
+				if (fittestChromosone.fitness > Params.FITNESS_LIMIT)
+					break;
 
 				// TODO cull stagnant species if max not improving
 

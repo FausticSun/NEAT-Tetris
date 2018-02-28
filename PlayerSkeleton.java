@@ -139,6 +139,34 @@ class Species {
 		averageFitness = totalFitness/speciesPopulation.size();
 		return averageFitness;
 	}
+
+	/**
+	 * creates baby chromosones equal to the amount requested
+	 * if there is only 1 parent, it will always crossbreed
+	 * otherwise, it will always breed with a different parent
+	 * @param numberOfChildren - number of chromosones to populate return with
+	 * @param population - in case of cross-breeding
+	 * @return returns a list of new baby chromosones
+	 */
+	public List<Chromosone> breed(int numberOfChildren, List<Chromosone> population) {
+		List<Chromosone> newChildren = new ArrayList<Chromosone>();
+		System.out.println("Species ID: " + speciesID + " breeding " + numberOfChildren + " new children.");
+		Chromosone parent1, parent2;
+		for (int i=0; i<numberOfChildren; i++) {
+			parent1 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
+			parent2 = parent1;
+			if (Math.random() < Params.CROSSOVER_CHANCE || speciesPopulation.size() == 1) {//crossbreed with anything in pop
+				while (parent1 == parent2)
+					parent2 = population.get((int)Math.floor(Math.random() * population.size()));
+			}
+			else { //not crossbreed
+				while (parent1 == parent2)
+					parent2 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
+			}
+			newChildren.add(parent1.breedWith(parent2));
+		}
+		return newChildren;
+	}
 }
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden

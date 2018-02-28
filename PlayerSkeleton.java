@@ -67,13 +67,50 @@ public class PlayerSkeleton {
 				if (fittestChromosone.fitness > Params.FITNESS_LIMIT)
 					break;
 
-				// TODO cull stagnant species if max not improving
 
-				// TODO if survival threshhold not reached, cull underperformers in each species
+				// breed new generation
+				newChildren = new ArrayList<Chromosone>();
+				totalSpeciesFitness = 0;
+				for (Species species : speciesList) {
+					totalSpeciesFitness += species.computeAverageFitness();
+				}
+				// check for stagnation
+				System.out.println("Current Stagnation: " + currentStagnation);
+				if (currentStagnation >= Params.MAXIMUM_STAGNATION || totalSpeciesFitness == 0) { //wipe out everyone by ignoring them
+					System.out.println("stagnating population. culling");
+					currentStagnation = 0;
+					Collections.sort(population);
+					Chromosone chromosone;
+					for (int j=0; j<Params.POPULATION_SIZE; j++) {
+						chromosone = population.get(0).breedWith(population.get(1)); //breed only the fittest 2 chromosones
+						newChildren.add(chromosone);
+					}
+				}
+				else { //do not wipe out everyone
 
-				// TODO breed children in each species and mutate them
-				// evaluate which species children get put into
-				// note: children can be crossbred
+					// cull underperformers in each species
+					for (Species species : speciesList)
+						species.cull(population);
+
+					//breed in all species
+					int numberOfChildren;
+					List<Chromosone> speciesChildren;
+					for (Species species : speciesList) {
+						numberOfChildren = (int)Math.ceil(Params.POPULATION_SIZE*species.averageFitness/totalSpeciesFitness);
+						speciesChildren = species.breed(numberOfChildren, population);
+						newChildren.addAll(speciesChildren);
+					}
+				}
+
+				// mutate new children and sort them into species
+				speciesList = new ArrayList<Species>();
+				for (Chromosone chromosone : newChildren) {
+					chromosone.mutate();
+					findSpecies(chromosone, speciesList);
+				}
+
+				population = new ArrayList<Chromosone>();
+				population.addAll(newChildren);
 			}
 			return;
 		}

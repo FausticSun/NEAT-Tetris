@@ -284,7 +284,8 @@ class NeuralNet {
 
 		// Create Neurons
 		neurons = new ArrayList<Neuron>();
-		for (int i=0; i<chromosone.neuronCount; i++)
+
+		for (int i=0; i<chromosone.neuronCount+1; i++)
 			neurons.add(new Neuron());
 
 		// Insert links

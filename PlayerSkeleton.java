@@ -357,6 +357,88 @@ class Chromosone {
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
 		this.id = Globals.getChromosoneId();
+	/**
+	 * Breeds 2 chromosones together:
+	 *  Same ID genes get randomly picked from one parent
+	 *  Excess and Disjoint genes get picked from the better parent
+	 *  If both parents are the same, Excess and Disjoint genes get added from both
+	 * @param other - other chromosone being bred with
+	 * @return the baby chromosone
+	 */
+	public Chromosone breedWith(Chromosone other) {
+		Chromosone chromosone = new Chromosone();
+		// TODO proper algorithm. I was braindead and did the not efficient one
+		if (fitness >= other.fitness) { //this is base chromosone
+			boolean matchFound;
+			for (Gene gene1 : genes) {
+				matchFound = false;
+				for (Gene gene2 : other.genes) { //check if it has a match
+					if (gene1.id == gene2.id) {
+						if (Math.random() < 0.5)
+							chromosone.genes.add(gene1);
+						else
+							chromosone.genes.add(gene2);
+						matchFound = true;
+						break;
+					}
+					if (gene1.id < gene2.id) { //too far to have a match
+						break;
+					}
+				}
+				//no match
+				if (!matchFound) {
+					chromosone.genes.add(gene1);
+				}
+			}
+			chromosone.neuronCount = neuronCount;
+		}
+		if  (other.fitness > fitness) { //other is base chromosone
+			boolean matchFound;
+			for (Gene gene1 : other.genes) {
+				matchFound = false;
+				for (Gene gene2 : genes) { //check if it has a match
+					if (gene1.id == gene2.id) {
+						if (Math.random() < 0.5)
+							chromosone.genes.add(gene1);
+						else
+							chromosone.genes.add(gene2);
+						matchFound = true;
+						break;
+					}
+					if (gene1.id < gene2.id) { //too far to have a match
+						break;
+					}
+				}
+				//no match
+				if (!matchFound) {
+					chromosone.genes.add(gene1);
+				}
+			}
+			chromosone.neuronCount = other.neuronCount;
+		}
+		if (fitness == other.fitness) {//both same fitness
+			boolean matchFound;
+			//add other's disjoint and excess genes
+			for (Gene gene1 : other.genes) {
+				matchFound = false;
+				for (Gene gene2 : genes) { //check if it has a match
+					if (gene1.id == gene2.id) {
+						matchFound = true;
+						break;
+					}
+					if (gene1.id < gene2.id) { //too far to have a match
+						break;
+					}
+				}
+				//no match
+				if (!matchFound) {
+					chromosone.genes.add(gene1);
+				}
+			}
+			chromosone.neuronCount = Math.max(neuronCount, other.neuronCount);
+		}
+		return chromosone;
+	}
 	}
 
 	public static Chromosone createDefaultChromosone() {

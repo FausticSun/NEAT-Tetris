@@ -100,6 +100,19 @@ public class PlayerSkeleton {
 	}
 }
 
+class Species {
+	public Chromosone representative;
+	public List<Chromosone> speciesPopulation;
+	public double averageFitness;
+	public int speciesID;
+
+	public Species(Chromosone representative){
+		speciesPopulation = new ArrayList<Chromosone>();
+		this.representative = representative;
+		speciesPopulation.add(representative);
+		speciesID = Globals.getSpeciesId();
+	}
+}
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {

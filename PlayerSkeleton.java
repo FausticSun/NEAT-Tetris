@@ -845,30 +845,38 @@ class Params {
 	public static final int INPUT_START_INDEX = 1;
 	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
 	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
-	public static final int GENERATION_LIMIT = 1; // Number of iterations
-	public static final double FITNESS_LIMIT = 1000; // Value for which we automatically end the search
-	
+	public static final int GENERATION_LIMIT = 200; //Number of iterations
+	public static final double FITNESS_LIMIT = 1000; //Value for which we automatically end the search
+
 	public static final int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosone to be averaged
 	public static final int POPULATION_SIZE = 200; // Population Size
 	public static final double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
-	public static final double MAXIMUM_STAGNATION = 15; // Generations of non-improvement before species is culled
+	public static final double MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
 	public static final double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
-	public static final double WEIGHT_MUTATION_CHANCE = 0.025; // Chance of weight of gene being changed
-	public static final double NODE_MUTATION_CHANCE = 0.03; // Chance of inserting a new node 
-	public static final double LINK_MUTATION_CHANCE = 0.05; // Chance of inserting a new link
+	public static final double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
+	public static final double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
+	public static final double LINK_MUTATION_CHANCE = 0.25; // Chance of inserting a new link
 	public static final double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
 	public static final double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
 	public static final double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
-	public static final double COMPATIBILITY_THRESHOLD = 3; // Threshold for measuring species compatibility
-	public static final double C1 = 1; // Coefficient for importance of excess genes in measuring compatibility
-	public static final double C2 = 1; // Coefficient for disjoint genes
+	public static final double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
+	public static final double C1 = 1; // Coefficient for importance of disjoint genes in measuring compatibility
+	public static final double C2 = 1; // Coefficient for excess genes
 	public static final double C3 = 3; // Coefficient for average weight difference
 }
 
 class Globals {
+	//TODO change 'node' into 'neuron'
 	public static int NEURON_COUNT = Params.HIDDEN_START_INDEX+1;
 	public static int INNOVATION_COUNT = 0;
 	public static int CHROMOSONE_COUNT = 0;
+	public static int NODE_COUNT = 0;
+	public static int SPECIES_COUNT = 0;
+
+	//map is (start reference node, target reference node, id)
+	public static Map<Integer, Map<Integer, Integer>> INNOVATION_MAP = new HashMap<Integer, Map<Integer, Integer>>();
+	//map is (first parent reference node, second parent reference node, id)
+	public static Map<Integer, Map<Integer, Integer>> NODE_MAP = new HashMap<Integer, Map<Integer, Integer>>();
 
 	public static int getInnovationId() {
 		INNOVATION_COUNT++;
@@ -878,5 +886,17 @@ class Globals {
 	public static int getChromosoneId() {
 		CHROMOSONE_COUNT++;
 		return CHROMOSONE_COUNT;
+	}
+
+	public static int getSpeciesId() {
+		SPECIES_COUNT++;
+		return SPECIES_COUNT;
+	}
+
+	public static int getNodeId() {
+		NODE_COUNT++;
+		NODE_MAP.put(NODE_COUNT, new HashMap<Integer, Integer>());
+		INNOVATION_MAP.put(NODE_COUNT, new HashMap<Integer, Integer>());
+		return NODE_COUNT;
 	}
 }

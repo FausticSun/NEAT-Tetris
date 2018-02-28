@@ -112,6 +112,14 @@ public class PlayerSkeleton {
 				population = new ArrayList<Chromosone>();
 				population.addAll(newChildren);
 			}
+
+			forkJoinPool.invoke(
+					new EvaluatePopulationFitnessTask(population));
+
+			Collections.sort(population);
+			FittestChromosone fc = new FittestChromosone(population.get(0));
+			// TODO do something with fittest chromosone
+			System.out.println("Best fitness: " + population.get(0).fitness);
 			return;
 		}
 

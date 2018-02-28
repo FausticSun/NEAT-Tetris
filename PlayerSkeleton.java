@@ -94,6 +94,23 @@ public class PlayerSkeleton {
 		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
 	}
 
+	/**
+	 * checks the current chromosone and adds it to a species list
+	 * @param chromosone - chromosone to be added to a species list
+	 */
+	public void findSpecies(Chromosone chromosone, List<Species> speciesList) {
+		for (Species species : speciesList) {
+			if (chromosone.computeGeneDistance(species.representative) < Params.COMPATIBILITY_THRESHOLD) {
+				species.speciesPopulation.add(chromosone);
+				//System.out.println("chromosome added to species");
+				return;
+			}
+		}
+		//did not fit into any species, creating new species
+		speciesList.add(new Species(chromosone));
+		//System.out.println("chromosome created new species");
+	}
+
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		return 0;

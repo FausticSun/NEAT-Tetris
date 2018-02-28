@@ -648,6 +648,12 @@ class FittestChromosone {
 		sb.append("");
 		xml = sb.toString();
 	}
+
+	public FittestChromosone(Chromosone chromosone) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(chromosone.toString());
+		xml = sb.toString();
+	}
 }
 
 /**

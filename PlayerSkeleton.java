@@ -111,6 +111,18 @@ public class PlayerSkeleton {
 		//System.out.println("chromosome created new species");
 	}
 
+	/**
+	 * updates current best chromosone to the one with best fitness
+	 * @param population - list of all current chromosones with updated fitness
+	 * @param fittestChromosone - current best chromosone
+	 */
+	public void updateFittest(List<Chromosone> population, Chromosone fittestChromosone){
+		for (Chromosone chromosone : population) {
+			if (fittestChromosone.fitness < chromosone.fitness)
+				fittestChromosone = chromosone;
+		}
+	}
+
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		return 0;

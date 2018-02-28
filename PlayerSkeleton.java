@@ -29,13 +29,23 @@ public class PlayerSkeleton {
 			for (int i=0; i<Params.POPULATION_SIZE; i++){
 				population.add(Chromosone.createDefaultChromosone());
 			}
-			// TODO mutate population
 
-			// TODO split chromosones into species
+			// mutate population
+			for (Chromosone chromosone : population)
+				chromosone.mutate();
+
+			List<Species> speciesList = new ArrayList<Species>();
+			for (Chromosone chromosone : population)
+				findSpecies(chromosone, speciesList);
 
 			//run NEAT
-			for (int i=0; i<Params.GENERATION_LIMIT; i++){
-
+			Chromosone fittestChromosone = population.get(0);
+			List<Chromosone> newChildren;
+			double highestFitness = -1;
+			int currentStagnation = 0;
+			double totalSpeciesFitness;
+			for (int i = 0; i < Params.GENERATION_LIMIT; i++) {
+				System.out.println("Current generation: " + i);
 				//evaluate fitness of chromosones
 				//double fitness;
 				forkJoinPool.invoke(

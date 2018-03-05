@@ -137,7 +137,7 @@ public class PlayerSkeleton {
 		while(!s.hasLost()) {
 			nn.activate(StateUtils.normalize(s));
 			List<Double> output = nn.getOutput();
-			
+
 			// DEUBG: Output output weights
 			// for (double d: output)
 			// 	System.out.format("%.3f ", d);
@@ -274,7 +274,7 @@ class Species {
 class NeuralNet {
 	public List<Neuron> neurons;
 	public Chromosone chromosone;
-	
+
 	/**
 	 * A neural net built based on a specific chromosone data.
 	 * Call activate() to pass in the input and then getOuput() later.
@@ -283,7 +283,7 @@ class NeuralNet {
 	 */
 	public NeuralNet(Chromosone chromosone) {
 		this.chromosone = chromosone;
-		
+
 		// DEBUG: Prints the chromosone on creation
 		// for (Gene g: chromosone.genes) {
 		// 	System.out.printf("ID: %d, From: %d, To: %d%n", g.id, g.from, g.to);
@@ -308,7 +308,7 @@ class NeuralNet {
 		// Setup Bias Neuron
 		neurons.get(0).type = ActivationType.BIAS;
 		neurons.get(0).isActive = true;
-		
+
 		// Setup Input Neurons
 		for (int i=Params.INPUT_START_INDEX; i<Params.OUTPUT_START_INDEX; i++) {
 			n = neurons.get(i);
@@ -326,7 +326,7 @@ class NeuralNet {
 			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 	}
-	
+
 	/**
 	 * Places these inputs into the neural net input neurons.
 	 *
@@ -355,7 +355,7 @@ class NeuralNet {
 
 		return true;
 	}
-	
+
 	/**
 	 * Gets the output of the neural net.
 	 * Call this after you call activate and pass in the inputs.
@@ -395,7 +395,7 @@ class Neuron {
 		this.value = 0;
 		this.isActive = false;
 	}
-	
+
 	/**
 	 * Recursively activate dependent neurons
 	 */
@@ -542,6 +542,69 @@ class Chromosone implements Comparable<Chromosone> {
 	 * @return the baby chromosone
 	 */
 	public Chromosone breedWith(Chromosone other) {
+	/*
+		System.out.println("Breeding chromosone " + this.id + " with " + other.id);
+		//Ensure that this has a higher fitness than other.
+		if(other.fitness > this.fitness) {
+			return other.breedWith(this);
+		}
+		Chromosone chromosone = new Chromosone();
+		/*
+		Collections.sort(this.genes);
+		Collections.sort(other.genes);
+		System.out.print("Printing i: [");
+		for(int i = 0; i < this.genes.size() && i < 100; i++) {
+			System.out.print(this.genes.get(i).id + " ");
+		}
+		System.out.println("]");
+		System.out.print("Printing j: [");
+		for(int j = 0; j < other.genes.size() && j < 100; j++) {
+			System.out.print(other.genes.get(j).id + " ");
+		}
+		System.out.println("]");
+		int i = 0, j = 0;
+		while(i < genes.size() && j < other.genes.size()) {
+			System.out.println("Matching " + i + " with " + j);
+			if(genes.get(i).id == other.genes.get(j).id) {
+				if (Math.random() < 0.5)
+					chromosone.genes.add(genes.get(i));
+				else
+					chromosone.genes.add(genes.get(j));
+				i++;
+				j++;
+				System.out.println("They match!");
+				continue;
+			}
+			if(genes.get(i).id > other.genes.get(j).id) {
+				if(this.fitness == other.fitness) {
+					chromosone.genes.add(other.genes.get(j));
+				}
+				j++;
+				System.out.println("j is lower.");
+				continue;
+			}
+			if(other.genes.get(j).id > genes.get(i).id) {
+				chromosone.genes.add(genes.get(i));
+				System.out.println("i is lower.");
+				i++;
+				continue;
+			}
+		}
+		if(i < genes.size() - 1) { //add the rest of the fitter chromosone
+			for(; i < genes.size(); i++) {
+				chromosone.genes.add(genes.get(i));
+			}
+		} else {
+			//only add if other is as fit as I
+			if(other.fitness == this.fitness) {
+				for(; j < genes.size(); j++) {
+					chromosone.genes.add(other.genes.get(j));
+				}
+			}
+		}
+
+		return chromosone;*/
+
 		Chromosone chromosone = new Chromosone();
 		// TODO proper algorithm. I was braindead and did the not efficient one
 		if (fitness >= other.fitness) { //this is base chromosone
@@ -614,6 +677,7 @@ class Chromosone implements Comparable<Chromosone> {
 			chromosone.neuronCount = Math.max(neuronCount, other.neuronCount);
 		}
 		return chromosone;
+
 	}
 
 	/**
@@ -641,7 +705,7 @@ class Chromosone implements Comparable<Chromosone> {
 		int startNode = -1;
 		int endNode = -1;
 		boolean foundPair = false;
-		for (int i = 0; i < 10; i++) { //try this 5 times or until success
+		for (int i = 0; i < 10; i++) { //try this 10 times or until success
 			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
 			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
 			foundPair = true;
@@ -666,6 +730,9 @@ class Chromosone implements Comparable<Chromosone> {
 		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
 		if (linkID == null) { //link does not exist yet
 			//check if link fits our easy restriction
+			//Probable optimization: Perform DFS from end node to start node to check for links
+			//Problems: List of edges (Genes) is stored in a list and there is no way to know the list of
+			//edges from 1 node to another other than going through the list.
 			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
 				System.out.println("Link between nodes do not exist yet, creating new link");
 				linkID = Globals.getInnovationId();
@@ -711,7 +778,7 @@ class Chromosone implements Comparable<Chromosone> {
 		int hid = Params.HIDDEN_START_INDEX;
 
 		//defaultChromosone ids not set yet
-		if (Globals.INNOVATION_MAP.get(0) == null)
+		if (Globals.INNOVATION_MAP.get(1) == null)
 			initializeStartingIds();
 
 		// Connect input neurons to a single hidden neuron
@@ -893,7 +960,7 @@ class StateUtils {
 
 		return inputs;
 	}
-	
+
 	public static int getOrient(State s, List<Double> outputs) {
 		int nextPiece = s.getNextPiece();
 		double max = outputs.get(0);
@@ -915,7 +982,7 @@ class StateUtils {
 				return orient;
 		}
 	}
-	
+
 	/**
 	 *
 	 * @param s
@@ -960,9 +1027,9 @@ class EvaluateChromosoneFitnessTask extends RecursiveTask<Double> {
 	protected Double compute() {
 		if (!isSubTask) {
 			return ForkJoinTask.invokeAll(createSubtasks())
-				.stream()
-				.mapToDouble(ForkJoinTask::join)
-				.sum() / Params.FITNESS_EVALUATIONS;
+					.stream()
+					.mapToDouble(ForkJoinTask::join)
+					.sum() / Params.FITNESS_EVALUATIONS;
 		} else {
 			return evaluateChromosoneFitness();
 		}
@@ -1016,8 +1083,8 @@ class EvaluatePopulationFitnessTask extends RecursiveTask<Double> {
 	protected Double compute() {
 		if (!isSubTask) {
 			ForkJoinTask.invokeAll(createSubtasks())
-				.stream()
-				.mapToDouble(ForkJoinTask::join);
+					.stream()
+					.mapToDouble(ForkJoinTask::join);
 		} else {
 			evaluatePopulationFitness();
 		}
@@ -1050,11 +1117,11 @@ class Params {
 	public static final int INPUT_START_INDEX = 1;
 	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
 	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
-	public static final int GENERATION_LIMIT = 0; //Number of iterations
+	public static final int GENERATION_LIMIT = 20; //Number of iterations
 	public static final double FITNESS_LIMIT = 1000; //Value for which we automatically end the search
 
 	public static final int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosone to be averaged
-	public static final int POPULATION_SIZE = 1000; // Population Size
+	public static final int POPULATION_SIZE = 100; // Population Size
 	public static final double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
 	public static final double MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
 	public static final double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by

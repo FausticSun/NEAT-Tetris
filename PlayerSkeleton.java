@@ -542,14 +542,13 @@ class Chromosone implements Comparable<Chromosone> {
 	 * @return the baby chromosone
 	 */
 	public Chromosone breedWith(Chromosone other) {
-	/*
 		System.out.println("Breeding chromosone " + this.id + " with " + other.id);
 		//Ensure that this has a higher fitness than other.
 		if(other.fitness > this.fitness) {
 			return other.breedWith(this);
 		}
 		Chromosone chromosone = new Chromosone();
-		/*
+		
 		Collections.sort(this.genes);
 		Collections.sort(other.genes);
 		System.out.print("Printing i: [");
@@ -567,9 +566,9 @@ class Chromosone implements Comparable<Chromosone> {
 			System.out.println("Matching " + i + " with " + j);
 			if(genes.get(i).id == other.genes.get(j).id) {
 				if (Math.random() < 0.5)
-					chromosone.genes.add(genes.get(i));
+					chromosone.genes.add(this.genes.get(i));
 				else
-					chromosone.genes.add(genes.get(j));
+					chromosone.genes.add(other.genes.get(j));
 				i++;
 				j++;
 				System.out.println("They match!");
@@ -602,82 +601,12 @@ class Chromosone implements Comparable<Chromosone> {
 				}
 			}
 		}
+		chromosone.neuronCount = neuronCount;
+		if(this.fitness == other.fitness) {
+			chromosone.neuronCount = Math.max(this.neuronCount, other.neuronCount);
+		}
 
-		return chromosone;*/
-
-		Chromosone chromosone = new Chromosone();
-		// TODO proper algorithm. I was braindead and did the not efficient one
-		if (fitness >= other.fitness) { //this is base chromosone
-			boolean matchFound;
-			for (Gene gene1 : genes) {
-				matchFound = false;
-				for (Gene gene2 : other.genes) { //check if it has a match
-					if (gene1.id == gene2.id) {
-						if (Math.random() < 0.5)
-							chromosone.genes.add(gene1);
-						else
-							chromosone.genes.add(gene2);
-						matchFound = true;
-						break;
-					}
-					if (gene1.id < gene2.id) { //too far to have a match
-						break;
-					}
-				}
-				//no match
-				if (!matchFound) {
-					chromosone.genes.add(gene1);
-				}
-			}
-			chromosone.neuronCount = neuronCount;
-		}
-		if (other.fitness > fitness) { //other is base chromosone
-			boolean matchFound;
-			for (Gene gene1 : other.genes) {
-				matchFound = false;
-				for (Gene gene2 : genes) { //check if it has a match
-					if (gene1.id == gene2.id) {
-						if (Math.random() < 0.5)
-							chromosone.genes.add(gene1);
-						else
-							chromosone.genes.add(gene2);
-						matchFound = true;
-						break;
-					}
-					if (gene1.id < gene2.id) { //too far to have a match
-						break;
-					}
-				}
-				//no match
-				if (!matchFound) {
-					chromosone.genes.add(gene1);
-				}
-			}
-			chromosone.neuronCount = other.neuronCount;
-		}
-		if (fitness == other.fitness) {//both same fitness
-			boolean matchFound;
-			//add other's disjoint and excess genes
-			for (Gene gene1 : other.genes) {
-				matchFound = false;
-				for (Gene gene2 : genes) { //check if it has a match
-					if (gene1.id == gene2.id) {
-						matchFound = true;
-						break;
-					}
-					if (gene1.id < gene2.id) { //too far to have a match
-						break;
-					}
-				}
-				//no match
-				if (!matchFound) {
-					chromosone.genes.add(gene1);
-				}
-			}
-			chromosone.neuronCount = Math.max(neuronCount, other.neuronCount);
-		}
 		return chromosone;
-
 	}
 
 	/**

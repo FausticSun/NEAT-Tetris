@@ -1086,21 +1086,82 @@ class Globals {
  * Handles running an experiment
  */
 abstract class Experiment {
-    private Population population;
-    private Parameters parameters;
+    private Population pop;
+    protected Parameters params;
 
-    public Experiment(Parameters parameters) {
-        this.parameters = parameters;
-        this.population = new Population(this::createDefaultChromosomesome);
+    /**
+     * @param inputSize Size of input of the neural network
+     * @param outputSize Size of output of the neural network
+     */
+    public Experiment(int inputSize, int outputSize) {
+        this.params = new Parameters(inputSize, outputSize);
+        this.pop = new Population(params,
+                this::createDefaultChromosome,
+                this::evaluateChromosomeFitness);
     }
 
+    /**
+     * Runs the experiment until fitness limit or generation limit is reached
+     */
     public void run() {
-        while (population.getHighestFitnessScore() < parameters.FITNESS_LIMIT &&
-                population.getGeneration() < parameters.GENERATION_LIMIT) {
-            population.advance();
+        while (pop.getHighestFitnessScore() < params.FITNESS_LIMIT &&
+                pop.getGeneration() < params.GENERATION_LIMIT) {
+            pop.advance();
         }
     }
 
     abstract public Chromosome createDefaultChromosome();
     abstract public int evaluateChromosomeFitness(Chromosome chromosome);
+}
+
+class XORExperiment extends Experiment {
+    public XORExperiment() {
+        super(2, 1);
+        super.params.FITNESS_LIMIT = 1;
+        super.params.GENERATION_LIMIT = 100;
+    }
+
+    @Override
+    public Chromosome createDefaultChromosome() {
+        return null;
+    }
+
+    @Override
+    public int evaluateChromosomeFitness(Chromosome chromosome) {
+        return 0;
+    }
+}
+
+class Parameters {
+    public int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
+    public int OUTPUT_SIZE = 4+State.COLS;
+    public int BIAS_START_INDEX = 0;
+    public int INPUT_START_INDEX = 1;
+    public int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
+    public int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+    public int GENERATION_LIMIT = 20; //Number of iterations
+    public double FITNESS_LIMIT = 1000; //Value for which we automatically end the search
+
+    public int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosome to be averaged
+    public int POPULATION_SIZE = 100; // Population Size
+    public double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
+    public double MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
+    public double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
+    public double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
+    public double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
+    public double LINK_MUTATION_CHANCE = 0.25; // Chance of inserting a new link
+    public double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
+    public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
+    public double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
+    public double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
+    public double C1 = 1; // Coefficient for importance of disjoint genes in measuring compatibility
+    public double C2 = 1; // Coefficient for excess genes
+    public double C3 = 3; // Coefficient for average weight difference
+
+    public Parameters(int inputSize, int outputSize) {
+        this.INPUT_SIZE = inputSize;
+        this.OUTPUT_SIZE = outputSize;
+        this.OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
+        this.HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+    }
 }

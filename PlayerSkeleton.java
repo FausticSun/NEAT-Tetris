@@ -209,6 +209,7 @@ class Species {
 	private Chromosome representative;
 	private List<Chromosome> chromosomes;
 	private int stagnation;
+	private double bestFitness;
 	private double averageFitness;
 	private double allocatedOffsprings;
 	private int speciesID;
@@ -236,6 +237,15 @@ class Species {
 		int limit = (int) Math.ceil(chromosomes.size() * SURVIVAL_THRESHOLD);
 		chromosomes = chromosomes.subList(0, limit);
 	}
+
+    /**
+     * Clear all chromosomes from the species and other variables
+     */
+	public void clear() {
+        chromosomes.clear();
+        averageFitness = -1;
+        allocatedOffsprings = -1;
+    }
 
     /**
      * @return No. of chomosomes in the species
@@ -276,6 +286,23 @@ class Species {
 		}
 		return newChildren;
 	}
+
+    /**
+     * Check if chromosome is compatible with this species
+     * @param c Chromosome to check
+     * @return True if compatible, False otherwise
+     */
+	public boolean compatibleWith(Chromosome c) {
+        return representative.distanceFrom(c) < COMPATIBILITY_THRESHOLD;
+    }
+
+    /**
+     * Add specified chromsome to the species
+     * @param c Chromosome to add
+     */
+    public void add(Chromosome c) {
+	    chromosomes.add(c);
+    }
 
     /**
      * @return A random chromosome from this species
@@ -1279,7 +1306,7 @@ class Population {
             s.cull();
         LOGGER.fine(String.format("Creating the next generation"));
         for (Species s: species) {
-            chromosomes.add(s.produceAllocatedOffsprings());
+            chromosomes.addAll(s.produceAllocatedOffsprings());
             s.clear();
         }
         evaluateFitness();
@@ -1304,15 +1331,18 @@ class Population {
         LOGGER.fine(String.format("Allocating chromosomes into species"));
         for (Chromosome c: chromosomes) {
             found: {
-                for (Species s : species) {
-                    if (s.comaptibleWith(c)) {
-                        s.addChromosome(c);
+                for (Species s: species) {
+                    if (s.compatibleWith(c)) {
+                        s.add(c);
                         break found;
                     }
                 }
                 species.add(new Species(this, c));
             }
         }
+        // Species final computation
+        for (Species s: species)
+            s.finalize();
     }
 
     /**

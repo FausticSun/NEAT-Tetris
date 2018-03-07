@@ -429,14 +429,24 @@ class Gene implements Comparable<Gene>{
 	public double weight;
 	public boolean isEnabled;
 
-	public Gene() {
-		this.id = 0;
-		this.from = 0;
-		this.to = 0;
+    /**
+     * Used in innovator to create a reference gene
+     * @param id Innovation ID of gene
+     * @param from Neuron ID giving output
+     * @param to Neuron ID receiving input
+     */
+	public Gene(int id, int from, int to) {
+		this.id = id;
+		this.from = from;
+		this.to = to;
 		this.weight = 0;
 		this.isEnabled = true;
 	}
 
+    /**
+     * Clones a gene
+     * @param other Gene to clone
+     */
 	public Gene(Gene other) {
 		this.id = other.id;
 		this.from = other.from;
@@ -444,6 +454,19 @@ class Gene implements Comparable<Gene>{
 		this.weight = other.weight;
 		this.isEnabled = other.isEnabled;
 	}
+
+    /**
+     * Clones a gene from a reference gene and randomize its weight
+     * @param other
+     * @param isEnabled
+     */
+	public Gene(Gene other, boolean isEnabled) {
+        this.id = other.id;
+        this.from = other.from;
+        this.to = other.to;
+        this.weight = Math.random()*2-1;
+        this.isEnabled = isEnabled;
+    }
 
 	public Gene(int id, int from, int to, double weight) {
 		this.id = id;
@@ -1096,7 +1119,7 @@ class Globals {
  * Handles running an experiment
  */
 abstract class Experiment {
-    private Population pop;
+    protected Population pop;
     protected Parameters params;
 
     /**
@@ -1127,17 +1150,27 @@ abstract class Experiment {
 class XORExperiment extends Experiment {
     public XORExperiment() {
         super(2, 1);
-        super.params.FITNESS_LIMIT = 1;
-        super.params.GENERATION_LIMIT = 100;
+        this.params.FITNESS_LIMIT = 1;
+        this.params.GENERATION_LIMIT = 100;
     }
 
     @Override
     public Chromosome createDefaultChromosome() {
+        // Connect bias and input nodes to output nodes
+        ArrayList<Gene> genes = new ArrayList<>();
+        for (int i=params.BIAS_START_INDEX; i<params.OUTPUT_START_INDEX; i++) {
+            for (int o=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; o++) {
+                pop.innovator.innovateLink(i, o);
+            }
+        }
+
+        // Create the default chromosome
+        Chromosome c = new Chromosome(this.pop, genes, params.OUTPUT_START_INDEX + params.OUTPUT_SIZE);
         return null;
     }
 
     @Override
-    public int evaluateChromosomeFitness(Chromosome chromosome) {
+    public double evaluateChromosomeFitness(Chromosome chromosome) {
         return 0;
     }
 }
@@ -1145,6 +1178,8 @@ class XORExperiment extends Experiment {
 class Parameters {
     public int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
     public int OUTPUT_SIZE = 4+State.COLS;
+    public int HIDDEN_SIZE = 0;
+    public int NETWORK_SIZE = 1 + INPUT_SIZE + OUTPUT_SIZE + HIDDEN_SIZE;
     public int BIAS_START_INDEX = 0;
     public int INPUT_START_INDEX = 1;
     public int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
@@ -1168,10 +1203,93 @@ class Parameters {
     public double C2 = 1; // Coefficient for excess genes
     public double C3 = 3; // Coefficient for average weight difference
 
-    public Parameters(int inputSize, int outputSize) {
+    public Parameters(int inputSize, int outputSize, int hiddenSize) {
         this.INPUT_SIZE = inputSize;
         this.OUTPUT_SIZE = outputSize;
+        this.HIDDEN_SIZE = hiddenSize;
+        this.NETWORK_SIZE = 1 + inputSize + outputSize + hiddenSize;
         this.OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
         this.HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+    }
+}
+
+class Population {
+    Parameters params;
+    Innovator innovator;
+
+    public Population(Parameters params, Object createDefaultChromosome, Object evaluateChromosomeFitness) {
+        this.params = params;
+        this.innovator = new Innovator(params.NETWORK_SIZE);
+    }
+}
+
+/**
+ * Handles the creation of new innovations (i.e. genes)
+ */
+class Innovator {
+    private int innovationCount;
+    private int neuronCount;
+    private Map<Integer[], Gene> linkInnovations;
+    private Map<Integer[], Gene[]> nodeInnovations;
+
+    /**
+     * @param neuronCount The initial number of neurons in the network
+     */
+    public Innovator(int neuronCount) {
+        this.innovationCount = 0;
+        this.neuronCount = neuronCount;
+        this.linkInnovations = new HashMap<>();
+        this.nodeInnovations = new HashMap<>();
+    }
+
+    /**
+     * Create a new link innovation if it has yet to exist and clone it
+     * @param from Neuron giving output
+     * @param to Neuron receiving input
+     * @return A new gene connecting the neurons
+     */
+    public Gene innovateLink(int from, int to) {
+        Integer[] key = new Integer[]{from, to};
+        if (!linkInnovations.containsKey(key))
+            linkInnovations.put(key, new Gene(getNewInnovationId(), from, to));
+        return new Gene(linkInnovations.get(key), true);
+    }
+
+    /**
+     * Create a new node innovation if it has yet to exist and clone it
+     * @param from Neuron giving output
+     * @param to Neuron receiving input
+     * @return 2 new genes connecting the neurons to a hidden neuron
+     */
+    public Gene innovateNode(int from, int to) {
+        Integer[] key = new Integer[]{from, to};
+        if (!nodeInnovations.containsKey(key))
+            nodeInnovations.put(key, new Gene[]{
+                    new Gene(getNewInnovationId(), from, getNewNeuronId()),
+                    new Gene(getNewInnovationId(), getNewNeuronId(), to),
+            });
+        return new Gene(linkInnovations.get(key), true);
+    }
+
+    /**
+     * Clear the innovation maps
+     */
+    public void clearInnovations() {
+        linkInnovations.clear();
+        nodeInnovations.clear();
+    }
+
+    /**
+     * @return A new unique innovation ID
+     */
+    private int getNewInnovationId() {
+        return innovationCount++;
+    }
+
+    /**
+     * @return A new hidden neuron ID
+     */
+    private int getNewNeuronId() {
+        return neuronCount++;
     }
 }

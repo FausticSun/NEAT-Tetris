@@ -1,5 +1,6 @@
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.*;
 import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
@@ -646,13 +647,14 @@ class Chromosome implements Comparable<Chromosome> {
 	 * each gene can mutate weight or get disabled/enabled
 	 * chromosome can gain a new node or link
 	 */
-	public void mutate() {
+	public Chromosome mutate() {
 		for (Gene gene : genes)
 			gene.mutate();
 		if (Math.random() < Params.LINK_MUTATION_CHANCE)
 			mutateLink();
 		if (Math.random() < Params.NODE_MUTATION_CHANCE)
 			mutateNode();
+		return this;
 	}
 
 	/**
@@ -851,6 +853,10 @@ class Chromosome implements Comparable<Chromosome> {
 		//System.out.println("geneDistance: " + distance + ", Chrom 1: " + id + ", Chrom 2: " + other.id);
 		return distance;
 	}
+
+	public double getFitness() {
+	    return this.fitness;
+    }
 }
 
 // TODO formatting for fittest chromosome
@@ -1143,7 +1149,7 @@ abstract class Experiment {
      * Runs the experiment until fitness limit or generation limit is reached
      */
     public void run() {
-        while (pop.getHighestFitnessScore() < params.FITNESS_LIMIT &&
+        while (pop.getFittestChromosome().getFitness() < params.FITNESS_LIMIT &&
                 pop.getGeneration() < params.GENERATION_LIMIT) {
             pop.advance();
         }
@@ -1235,13 +1241,60 @@ class Parameters {
 }
 
 class Population {
-    Parameters params;
-    Innovator innovator;
-    List<Chromosome> chromosomes;
+    private int chromosomeCount;
+    private int generation;
+    private Parameters params;
+    private Innovator innovator;
+    private List<Chromosome> chromosomes;
+    private Function<Chromosome, Double> chromosomeFitnessEvaluator;
 
-    public Population(Parameters params, Object createDefaultChromosome, Object evaluateChromosomeFitness) {
+    public Population(Parameters params,
+                      Supplier<Chromosome> defaultChromosomeCreator,
+                      Function<Chromosome, Double> chromosomeFitnessEvaluator) {
+        this.chromosomeCount = 0;
+        this.chromosomes = new ArrayList<>(params.POPULATION_SIZE);
         this.params = params;
         this.innovator = new Innovator(params.NETWORK_SIZE);
+        this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+        this.generation = 0;
+        this.populate(defaultChromosomeCreator.get());
+    }
+
+    /**
+     * Populate the population by copying the base chromosome and mutating them
+     * @param base Base chromosome to make copies of
+     */
+    private void populate(Chromosome base) {
+        for (int i=0; i<params.POPULATION_SIZE; i++)
+            chromosomes.add((new Chromosome(base)).mutate());
+    }
+
+    /**
+     * @return A new unique chromosome ID
+     */
+    private int getNewChromosomeId() {
+        return chromosomeCount++;
+    }
+
+    /**
+     * Advance the population to the next generation
+     */
+    public void advance() {
+
+    }
+
+    /**
+     * @return The fittest chromosome
+     */
+    public Chromosome getFittestChromosome() {
+        return Collections.max(chromosomes);
+    }
+
+    /**
+     * @return Current generation number
+     */
+    public int getGeneration() {
+        return this.generation;
     }
 }
 

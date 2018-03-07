@@ -202,6 +202,8 @@ public class PlayerSkeleton {
 }
 
 class Species {
+    public static double CROSSOVER_CHANCE;
+    public static double COMPATIBILITY_THRESHOLD;
 	public Chromosome representative;
 	public List<Chromosome> speciesPopulation;
 	public double averageFitness;
@@ -274,9 +276,14 @@ class Species {
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {
+    public static int INPUT_SIZE;
+    public static int OUTPUT_SIZE;
+    public static int BIAS_START_INDEX;
+    public static int INPUT_START_INDEX;
+    public static int OUTPUT_START_INDEX;
+    public static int HIDDEN_START_INDEX;
 	private List<Neuron> neurons;
     private Chromosome chromosome;
-	private Experiment.Parameters params;
 
 	/**
 	 * A neural net built based on a specific chromosome data.
@@ -284,20 +291,19 @@ class NeuralNet {
 	 *
 	 * @param chromosome The chromosome to create the neural net information.
 	 */
-	public NeuralNet(Experiment.Parameters params, Chromosome chromosome) {
-	    this.params = params;
+	public NeuralNet(Chromosome chromosome) {
 		this.chromosome = chromosome;
 
 		// Create Neurons
 		neurons = new ArrayList<>();
         neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
-        for (int i=0; i<params.INPUT_SIZE; i++)
+        for (int i=0; i<INPUT_SIZE; i++)
             neurons.add(new Neuron(ActivationType.LINEAR)); // Input Neurons
-        for (int i=0; i<chromosome.getNeuronCount()-params.INPUT_SIZE-1; i++)
+        for (int i=0; i<chromosome.getNeuronCount()-INPUT_SIZE-1; i++)
             neurons.add(new Neuron(ActivationType.SIGMOID)); // Output and Hidden Neurons
 
 		// Insert links
-		for (Chromosome.Gene g: chromosome.getGenes()) {
+		for (Gene g: chromosome.getGenes()) {
 			if (g.isEnabled) {
 				neurons.get(g.to).addLink(neurons.get(g.from), g.weight);
 			}
@@ -312,7 +318,7 @@ class NeuralNet {
 	 */
 	public List<Double> activate(List<Double> inputs) {
 		// Check input size
-		if (inputs.size() != params.INPUT_SIZE) {
+		if (inputs.size() != INPUT_SIZE) {
 			System.out.println("Input size mismatch!");
 			return null;
 		}
@@ -321,13 +327,13 @@ class NeuralNet {
 		reset();
 
 		// Set Input Neurons
-		for (int i=0; i<params.INPUT_SIZE; i++) {
+		for (int i=0; i<INPUT_SIZE; i++) {
 			neurons.get(i).setValue(inputs.get(i));
 		}
 
 		// Activate Output Neurons
         List<Double> output = new ArrayList<>();
-		for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+		for (int i=OUTPUT_START_INDEX; i<HIDDEN_START_INDEX; i++) {
 			output.add(neurons.get(i).getValue());
 		}
 
@@ -343,14 +349,14 @@ class NeuralNet {
 	 */
 	public List<Double> getOutput() {
 		List<Double> output = new ArrayList<Double>();
-		for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+		for (int i=OUTPUT_START_INDEX; i<HIDDEN_START_INDEX; i++) {
 			output.add(neurons.get(i).value);
 		}
 		return output;
 	}
 
 	public void reset() {
-		for (int i=params.OUTPUT_START_INDEX; i<neurons.size(); i++)
+		for (int i=OUTPUT_START_INDEX; i<neurons.size(); i++)
 			neurons.get(i).reset();
 	}
 
@@ -445,6 +451,15 @@ class Calc {
 }
 
 class Chromosome implements Comparable<Chromosome> {
+    public static double WEIGHT_MUTATION_CHANCE;
+    public static double NODE_MUTATION_CHANCE;
+    public static double LINK_MUTATION_CHANCE;
+    public static double ENABLE_MUTATION_CHANCE;
+    public static double DISABLE_MUTATION_CHANCE;
+    public static double DISJOINT_COEFFICIENT;
+    public static double EXCESS_COEFFICIENT;
+    public static double WEIGHT_DIFFERENCE_COEFFICIENT;
+
 	private Population pop;
     private int neuronCount;
 	private List<Gene> genes;
@@ -756,84 +771,86 @@ class Chromosome implements Comparable<Chromosome> {
 	    return this.genes;
     }
 
-    static class Gene implements Comparable<Gene>{
-        public int id;
-        public int from;
-        public int to;
-        public double weight;
-        public boolean isEnabled;
+}
 
-        /**
-         * Used in innovator to create a reference gene
-         * @param id Innovation ID of gene
-         * @param from Neuron ID giving output
-         * @param to Neuron ID receiving input
-         */
-        public Gene(int id, int from, int to) {
-            this.id = id;
-            this.from = from;
-            this.to = to;
-            this.weight = 0;
-            this.isEnabled = true;
-        }
+class Gene implements Comparable<Gene>{
+    public static double WEIGHT_MUTATION_RANGE;
+    public int id;
+    public int from;
+    public int to;
+    public double weight;
+    public boolean isEnabled;
 
-        /**
-         * Clones a gene
-         * @param other Gene to clone
-         */
-        public Gene(Gene other) {
-            this.id = other.id;
-            this.from = other.from;
-            this.to = other.to;
-            this.weight = other.weight;
-            this.isEnabled = other.isEnabled;
-        }
+    /**
+     * Used in innovator to create a reference gene
+     * @param id Innovation ID of gene
+     * @param from Neuron ID giving output
+     * @param to Neuron ID receiving input
+     */
+    public Gene(int id, int from, int to) {
+        this.id = id;
+        this.from = from;
+        this.to = to;
+        this.weight = 0;
+        this.isEnabled = true;
+    }
 
-        public Gene(int id, int from, int to, double weight) {
-            this.id = id;
-            this.from = from;
-            this.to = to;
-            this.weight = weight;
-            this.isEnabled = true;
-        }
+    /**
+     * Clones a gene
+     * @param other Gene to clone
+     */
+    public Gene(Gene other) {
+        this.id = other.id;
+        this.from = other.from;
+        this.to = other.to;
+        this.weight = other.weight;
+        this.isEnabled = other.isEnabled;
+    }
 
-        public Gene mutate() {
-            if (Math.random() < Params.DISABLE_MUTATION_CHANCE)
-                mutateDisable();
-            if (Math.random() < Params.ENABLE_MUTATION_CHANCE)
-                mutateEnable();
-            if (Math.random() < Params.WEIGHT_MUTATION_CHANCE)
-                mutateWeight();
-            return this;
-        }
+    public Gene(int id, int from, int to, double weight) {
+        this.id = id;
+        this.from = from;
+        this.to = to;
+        this.weight = weight;
+        this.isEnabled = true;
+    }
 
-        public int compareTo(Gene other) {
-            return id - other.id;
-        }
+    public Gene mutate() {
+        if (Math.random() < DISABLE_MUTATION_CHANCE)
+            mutateDisable();
+        if (Math.random() < ENABLE_MUTATION_CHANCE)
+            mutateEnable();
+        if (Math.random() < WEIGHT_MUTATION_CHANCE)
+            mutateWeight();
+        return this;
+    }
 
-        /**
-         * mutates by disabling a link
-         */
-        public Gene mutateDisable() {
-            isEnabled = false;
-            return this;
-        }
+    public int compareTo(Gene other) {
+        return id - other.id;
+    }
 
-        /**
-         * mutates by enabling a link
-         */
-        public Gene mutateEnable() {
-            isEnabled = true;
-            return this;
-        }
+    /**
+     * mutates by disabling a link
+     */
+    public Gene mutateDisable() {
+        isEnabled = false;
+        return this;
+    }
 
-        /**
-         * mutates by changing weight
-         */
-        public Gene mutateWeight() {
-            weight += Math.random() * Params.WEIGHT_MUTATION_RANGE*2 - Params.WEIGHT_MUTATION_RANGE;
-            return this;
-        }
+    /**
+     * mutates by enabling a link
+     */
+    public Gene mutateEnable() {
+        isEnabled = true;
+        return this;
+    }
+
+    /**
+     * mutates by changing weight
+     */
+    public Gene mutateWeight() {
+        weight += Math.random() * WEIGHT_MUTATION_RANGE*2 - WEIGHT_MUTATION_RANGE;
+        return this;
     }
 }
 
@@ -946,19 +963,39 @@ class StateUtils {
  * Handles running an experiment
  */
 abstract class Experiment {
+    public static double FITNESS_LIMIT;
+    public static int GENERATION_LIMIT;
     protected Population pop;
     protected Parameters params;
 
     /**
-     * @param inputSize Size of input of the neural network
-     * @param outputSize Size of output of the neural network
-     * @param hiddenSize Default size of the hidden nodes
+     * Setup the experiment by setting static variables of relevant classes
      */
-    public Experiment(int inputSize, int outputSize, int hiddenSize) {
-        this.params = new Parameters(inputSize, outputSize, hiddenSize);
-        this.pop = new Population(params,
-                this::createChromosomeBlueprint,
-                this::evaluateChromosomeFitness);
+    protected void setup() {
+        Experiment.FITNESS_LIMIT = params.FITNESS_LIMIT;
+        Experiment.GENERATION_LIMIT = params.GENERATION_LIMIT;
+        NeuralNet.INPUT_SIZE = params.INPUT_SIZE;
+        NeuralNet.OUTPUT_SIZE = params.OUTPUT_SIZE;
+        NeuralNet.BIAS_START_INDEX = params.BIAS_START_INDEX;
+        NeuralNet.INPUT_START_INDEX = params.INPUT_START_INDEX;
+        NeuralNet.OUTPUT_START_INDEX = params.OUTPUT_START_INDEX;
+        NeuralNet.HIDDEN_START_INDEX = params.HIDDEN_START_INDEX;
+        Population.SURVIVAL_THRESHOLD = params.SURVIVAL_THRESHOLD;
+        Population.MAXIMUM_STAGNATION = params.MAXIMUM_STAGNATION;
+        Population.POPULATION_SIZE = params.POPULATION_SIZE;
+        Population.DEFAULT_NETWORK_SIZE = params.DEFAULT_NETWORK_SIZE;
+        Chromosome.WEIGHT_MUTATION_CHANCE = params.WEIGHT_MUTATION_CHANCE;
+        Chromosome.NODE_MUTATION_CHANCE = params.NODE_MUTATION_CHANCE;
+        Chromosome.LINK_MUTATION_CHANCE = params.LINK_MUTATION_CHANCE;
+        Chromosome.ENABLE_MUTATION_CHANCE = params.ENABLE_MUTATION_CHANCE;
+        Chromosome.DISABLE_MUTATION_CHANCE = params.DISABLE_MUTATION_CHANCE;
+        Chromosome.DISJOINT_COEFFICIENT = params.DISJOINT_COEFFICIENT;
+        Chromosome.EXCESS_COEFFICIENT = params.EXCESS_COEFFICIENT;
+        Chromosome.WEIGHT_DIFFERENCE_COEFFICIENT = params.WEIGHT_DIFFERENCE_COEFFICIENT;
+        Species.CROSSOVER_CHANCE = params.CROSSOVER_CHANCE;
+        Species.COMPATIBILITY_THRESHOLD = params.COMPATIBILITY_THRESHOLD;
+        Gene.WEIGHT_MUTATION_RANGE = params.WEIGHT_MUTATION_RANGE;
+        this.pop = new Population(this::createChromosomeBlueprint, this::evaluateChromosomeFitness);
     }
 
     /**
@@ -983,8 +1020,8 @@ abstract class Experiment {
     class Parameters {
         public int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
         public int OUTPUT_SIZE = 4+State.COLS;
-        public int HIDDEN_SIZE = 0;
-        public int NETWORK_SIZE = 1 + INPUT_SIZE + OUTPUT_SIZE + HIDDEN_SIZE;
+        public int DEFAULT_HIDDEN_SIZE = 0;
+        public int DEFAULT_NETWORK_SIZE = 1 + INPUT_SIZE + OUTPUT_SIZE + DEFAULT_HIDDEN_SIZE;
         public int BIAS_START_INDEX = 0;
         public int INPUT_START_INDEX = 1;
         public int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
@@ -995,7 +1032,7 @@ abstract class Experiment {
         public int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosome to be averaged
         public int POPULATION_SIZE = 100; // Population Size
         public double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
-        public double MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
+        public int MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
         public double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
         public double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
         public double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
@@ -1004,15 +1041,15 @@ abstract class Experiment {
         public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
         public double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
         public double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
-        public double C1 = 1; // Coefficient for importance of disjoint genes in measuring compatibility
-        public double C2 = 1; // Coefficient for excess genes
-        public double C3 = 3; // Coefficient for average weight difference
+        public double DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
+        public double EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
+        public double WEIGHT_DIFFERENCE_COEFFICIENT = 3; // Coefficient for average weight difference
 
         public Parameters(int inputSize, int outputSize, int hiddenSize) {
             this.INPUT_SIZE = inputSize;
             this.OUTPUT_SIZE = outputSize;
-            this.HIDDEN_SIZE = hiddenSize;
-            this.NETWORK_SIZE = 1 + inputSize + outputSize + hiddenSize;
+            this.DEFAULT_HIDDEN_SIZE = hiddenSize;
+            this.DEFAULT_NETWORK_SIZE = 1 + inputSize + outputSize + hiddenSize;
             this.OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
             this.HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
         }
@@ -1022,9 +1059,10 @@ abstract class Experiment {
 class XORExperiment extends Experiment {
     private static final Logger LOGGER = Logger.getLogger( XORExperiment.class.getName() );
     public XORExperiment() {
-        super(2, 1, 0);
+        this.params = new Parameters(2, 1, 0);
         this.params.FITNESS_LIMIT = 1;
         this.params.GENERATION_LIMIT = 100;
+        super.setup();
     }
 
     @Override
@@ -1068,9 +1106,10 @@ class TetrisExperiment extends Experiment {
     private static final int hiddenSize = 5;
 
     public TetrisExperiment() {
-        super(inputSize, outputSize, hiddenSize);
+        this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
         this.params.GENERATION_LIMIT = 1000;
+        super.setup();
     }
 
     @Override
@@ -1078,12 +1117,12 @@ class TetrisExperiment extends Experiment {
         List<Integer[]> chromosomeBlueprint = new ArrayList<>();
         // Connect bias and input nodes to 5 hidden nodes
         for (int o=params.BIAS_START_INDEX; o<params.OUTPUT_START_INDEX; o++) {
-            for (int i=params.HIDDEN_START_INDEX; i<params.NETWORK_SIZE; i++) {
+            for (int i = params.HIDDEN_START_INDEX; i<params.DEFAULT_NETWORK_SIZE; i++) {
                 chromosomeBlueprint.add(new Integer[]{o, i});
             }
         }
         // Connect 5 hidden nodes to output nodes
-        for (int o=params.HIDDEN_START_INDEX; o<params.NETWORK_SIZE; o++) {
+        for (int o = params.HIDDEN_START_INDEX; o<params.DEFAULT_NETWORK_SIZE; o++) {
             for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
                 chromosomeBlueprint.add(new Integer[]{o, i});
             }
@@ -1164,26 +1203,26 @@ class TetrisExperiment extends Experiment {
 
 class Population {
     private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );
-
+    public static double SURVIVAL_THRESHOLD;
+    public static int MAXIMUM_STAGNATION;
+    public static int POPULATION_SIZE;
+    public static int DEFAULT_NETWORK_SIZE;
     private int chromosomeCount;
     private int speciesCount;
     private int generation;
-    private Experiment.Parameters params;
     private Innovator innovator;
     private List<Chromosome> chromosomes;
     private List<Species> species;
     private Function<Chromosome, Double> chromosomeFitnessEvaluator;
 
-    public Population(Experiment.Parameters params,
-                      Supplier<List<Integer[]>> chromosomeBlueprintCreator,
+    public Population(Supplier<List<Integer[]>> chromosomeBlueprintCreator,
                       Function<Chromosome, Double> chromosomeFitnessEvaluator) {
         LOGGER.info(String.format("Creating a new population"));
         this.chromosomeCount = 0;
         this.speciesCount = 0;
-        this.chromosomes = new ArrayList<>(params.POPULATION_SIZE);
+        this.chromosomes = new ArrayList<>(POPULATION_SIZE);
         this.species = new ArrayList<>();
-        this.params = params;
-        this.innovator = new Innovator(params.NETWORK_SIZE);
+        this.innovator = new Innovator(DEFAULT_NETWORK_SIZE);
         this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
         this.generation = 0;
         this.populate(
@@ -1197,7 +1236,7 @@ class Population {
      * @param base Base chromosome to make copies of
      */
     private void populate(Chromosome base) {
-        for (int i=0; i<params.POPULATION_SIZE; i++)
+        for (int i=0; i<POPULATION_SIZE; i++)
             chromosomes.add((new Chromosome(base)).mutate());
     }
 
@@ -1207,10 +1246,10 @@ class Population {
      * @return The base chromosome created from the blueprint
      */
     private Chromosome createDefaultChromosome(List<Integer[]> blueprint) {
-        List<Chromosome.Gene> genes = new ArrayList<>();
+        List<Gene> genes = new ArrayList<>();
         for (Integer[] b: blueprint)
             this.innovator.innovateLink(b[0], b[1]);
-        return new Chromosome(this, genes, params.NETWORK_SIZE);
+        return new Chromosome(this, genes, DEFAULT_NETWORK_SIZE);
     }
 
     /**
@@ -1349,8 +1388,8 @@ class Population {
     class Innovator {
         private int innovationCount;
         private int neuronCount;
-        private Map<Integer[], Chromosome.Gene> linkInnovations;
-        private Map<Integer[], Chromosome.Gene[]> nodeInnovations;
+        private Map<Integer[], Gene> linkInnovations;
+        private Map<Integer[], Gene[]> nodeInnovations;
 
         /**
          * @param neuronCount The initial number of neurons in the network
@@ -1368,11 +1407,11 @@ class Population {
          * @param to Neuron receiving input
          * @return A new gene connecting the neurons
          */
-        public Chromosome.Gene innovateLink(int from, int to) {
+        public Gene innovateLink(int from, int to) {
             Integer[] key = new Integer[]{from, to};
             if (!linkInnovations.containsKey(key))
-                linkInnovations.put(key, new Chromosome.Gene(getNewInnovationId(), from, to));
-            return (new Chromosome.Gene(linkInnovations.get(key))).mutateWeight();
+                linkInnovations.put(key, new Gene(getNewInnovationId(), from, to));
+            return (new Gene(linkInnovations.get(key))).mutateWeight();
         }
 
         /**
@@ -1381,16 +1420,16 @@ class Population {
          * @param to Neuron receiving input
          * @return 2 new genes connecting the neurons to a hidden neuron
          */
-        public Chromosome.Gene innovateNode(int from, int to) {
+        public Gene innovateNode(int from, int to) {
             Integer[] key = new Integer[]{from, to};
             if (!nodeInnovations.containsKey(key)) {
                 int hiddenNeuron = getNewNeuronId();
-                nodeInnovations.put(key, new Chromosome.Gene[]{
-                        new Chromosome.Gene(getNewInnovationId(), from, hiddenNeuron),
-                        new Chromosome.Gene(getNewInnovationId(), hiddenNeuron, to),
+                nodeInnovations.put(key, new Gene[]{
+                        new Gene(getNewInnovationId(), from, hiddenNeuron),
+                        new Gene(getNewInnovationId(), hiddenNeuron, to),
                 });
             }
-            return (new Chromosome.Gene(linkInnovations.get(key))).mutateWeight();
+            return (new Gene(linkInnovations.get(key))).mutateWeight();
         }
 
         /**

@@ -492,38 +492,48 @@ class Gene implements Comparable<Gene>{
 }
 
 class Chromosome implements Comparable<Chromosome> {
-	public int neuronCount;
-	public List<Gene> genes;
-	public double fitness;
-	public int id;
+	private Population pop;
+    private int neuronCount;
+	private List<Gene> genes;
+	private double fitness;
+	private int id;
 
-	public Chromosome() {
-		neuronCount = Globals.NEURON_COUNT;
-		genes = new ArrayList<Gene>();
-		fitness = -1;
-		id = Globals.getChromosomeId();
+    /**
+     * Initializes a default chromosome. This should only be called once throughout the experiment.
+     * @param pop The population this chromosome belongs to
+     * @param genes The initial genes in this chromosome
+     * @param neuronCount The maximum neuron id referenced by any gene
+     */
+	public Chromosome(Population pop, List<Gene> genes, int neuronCount) {
+		this.pop = pop;
+        this.genes = genes;
+        this.neuronCount = neuronCount;
+		this.fitness = -1;
+		this.id = -1;
 	}
 
+    /**
+     * Clones a chromosome. This should be the only way new chromosomes are created in the experiment.
+     * @param other The chromosome to clone
+     */
 	public Chromosome(Chromosome other) {
+	    this.pop = other.pop;
 		this.neuronCount = other.neuronCount;
-		this.genes = new ArrayList<Gene>();
+		this.genes = new ArrayList<>();
 		for (Gene g : other.genes)
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
-		this.id = Globals.getChromosomeId();
+		this.id = this.pop.getNewChromosomeId();
 	}
 
 	/**
-	 * @param other - other chromosome being tested against
-	 * @return positive if better, negative if worse
+     * Compare Chromosomes based on their fitness
+	 * @param other - Other chromosome being tested against
+	 * @return Positive if better, negative if worse
 	 */
+	@Override
 	public int compareTo(Chromosome other) {
-		if (this.fitness > other.fitness)
-			return 1;
-		else if (this.fitness > other.fitness)
-			return -1;
-		else
-			return 0;
+	    return Double.compare(this.fitness, other.fitness);
 	}
 
 	/**

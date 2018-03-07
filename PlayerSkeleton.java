@@ -1272,17 +1272,21 @@ class Population {
     private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );
 
     private int chromosomeCount;
+    private int speciesCount;
     private int generation;
     private Experiment.Parameters params;
     private Innovator innovator;
     private List<Chromosome> chromosomes;
+    private List<Species> species;
     private Function<Chromosome, Double> chromosomeFitnessEvaluator;
 
     public Population(Experiment.Parameters params,
                       Supplier<List<Integer[]>> chromosomeBlueprintCreator,
                       Function<Chromosome, Double> chromosomeFitnessEvaluator) {
         this.chromosomeCount = 0;
+        this.speciesCount = 0;
         this.chromosomes = new ArrayList<>(params.POPULATION_SIZE);
+        this.species = new ArrayList<>();
         this.params = params;
         this.innovator = new Innovator(params.NETWORK_SIZE);
         this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
@@ -1320,10 +1324,57 @@ class Population {
     }
 
     /**
+     * @return A new unique species ID
+     */
+    public int getNewSpeciesId() {
+        return speciesCount++;
+    }
+
+    /**
      * Advance the population to the next generation
+     * Precondition: All chromosomes must have been evaluated for fitness and separated into species
+     * Postcondition: A new generation with all chromosomes evaluated for fitness and separated
+     * into species
      */
     public void advance() {
+        generation++;
+        chromosomes.clear();
+        LOGGER.info(String.format("Entering Generation: %n", generation));
+        LOGGER.fine(String.format("Slaughtering the weak of each species"));
+        for (Species s: species)
+            s.cull();
+        LOGGER.fine(String.format("Creating the next generation"));
+        for (Species s: species) {
+            chromosomes.add(s.produceAllocatedOffsprings());
+            s.clear();
+        }
+        LOGGER.fine(String.format("Evaluating population fitness"));
+        evaluatePopulationFitness();
+        LOGGER.fine(String.format("Allocating chromosomes into species"));
+        allocateChromosomesToSpecies();
+        LOGGER.fine(String.format("Pruning extinct species"));
+        for (Iterator<Species> it = species.iterator(); iterator.hasNext()) {
+            Species s = it.next();
+            if (s.size() <= 0)
+                it.remove();
+        }
+    }
 
+    /**
+     * Allocates chromosomes to existing species
+     */
+    private void allocateChromosomesToSpecies() {
+        for (Chromosome c: chromosomes) {
+            found: {
+                for (Species s : species) {
+                    if (s.comaptibleWith(c)) {
+                        s.addChromosome(c);
+                        break found;
+                    }
+                }
+                species.add(new Species(getNewSpeciesId(), c));
+            }
+        }
     }
 
     /**

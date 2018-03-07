@@ -1140,7 +1140,7 @@ class XORExperiment extends Experiment {
         };
         double error = 0;
 
-        NeuralNet nn = new NeuralNet(params, chromosome);
+        NeuralNet nn = new NeuralNet(chromosome);
         Double[] outputs;
         for (Double[][] c: concepts) {
             outputs = (Double[]) nn.activate(Arrays.asList(c[0])).toArray();

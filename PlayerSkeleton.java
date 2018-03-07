@@ -325,13 +325,13 @@ class NeuralNet {
 	 * Places these inputs into the neural net input neurons.
 	 *
 	 * @param inputs The list of inputs from the screen and the current piece.
-	 * @return True if successful, false otherwise.
+	 * @return The list of outputs, null if unsuccessful
 	 */
-	public boolean activate(List<Double> inputs) {
+	public List<Double> activate(List<Double> inputs) {
 		// Check input size
 		if (inputs.size() != Params.INPUT_SIZE) {
 			System.out.println("Input size mismatch!");
-			return false;
+			return null;
 		}
 
 		// Clear the network
@@ -347,7 +347,12 @@ class NeuralNet {
 			neurons.get(i).activate();
 		}
 
-		return true;
+		// Return output as list
+        List<Double> output = new ArrayList<Double>();
+        for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+            output.add(neurons.get(i).value);
+        }
+        return output;
 	}
 	
 	/**
@@ -1125,9 +1130,10 @@ abstract class Experiment {
     /**
      * @param inputSize Size of input of the neural network
      * @param outputSize Size of output of the neural network
+     * @param hiddenSize Default size of the hidden nodes
      */
-    public Experiment(int inputSize, int outputSize) {
-        this.params = new Parameters(inputSize, outputSize);
+    public Experiment(int inputSize, int outputSize, int hiddenSize) {
+        this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.pop = new Population(params,
                 this::createDefaultChromosome,
                 this::evaluateChromosomeFitness);
@@ -1144,12 +1150,12 @@ abstract class Experiment {
     }
 
     abstract public Chromosome createDefaultChromosome();
-    abstract public int evaluateChromosomeFitness(Chromosome chromosome);
+    abstract public double evaluateChromosomeFitness(Chromosome chromosome);
 }
 
 class XORExperiment extends Experiment {
     public XORExperiment() {
-        super(2, 1);
+        super(2, 1, 0);
         this.params.FITNESS_LIMIT = 1;
         this.params.GENERATION_LIMIT = 100;
     }
@@ -1160,18 +1166,33 @@ class XORExperiment extends Experiment {
         ArrayList<Gene> genes = new ArrayList<>();
         for (int i=params.BIAS_START_INDEX; i<params.OUTPUT_START_INDEX; i++) {
             for (int o=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; o++) {
-                pop.innovator.innovateLink(i, o);
+                genes.add(pop.innovator.innovateLink(i, o));
             }
         }
 
         // Create the default chromosome
-        Chromosome c = new Chromosome(this.pop, genes, params.OUTPUT_START_INDEX + params.OUTPUT_SIZE);
-        return null;
+        Chromosome c = new Chromosome(this.pop, genes, params.NETWORK_SIZE);
+        return c;
     }
 
     @Override
     public double evaluateChromosomeFitness(Chromosome chromosome) {
-        return 0;
+        Double[][][] concepts = {
+                {{0.0, 0.0}, {0.0}},
+                {{0.0, 1.0}, {1.0}},
+                {{1.0, 0.0}, {1.0}},
+                {{1.0, 1.0}, {0.0}}
+        };
+        double error = 0;
+
+        NeuralNet nn = new NeuralNet(chromosome);
+        Double[] outputs;
+        for (Double[][] c: concepts) {
+            outputs = (Double[]) nn.activate(Arrays.asList(c[0])).toArray();
+            error += Math.pow(c[1][0] - outputs[0], 2);
+        }
+
+        return 1.0 - error;
     }
 }
 
@@ -1216,6 +1237,7 @@ class Parameters {
 class Population {
     Parameters params;
     Innovator innovator;
+    List<Chromosome> chromosomes;
 
     public Population(Parameters params, Object createDefaultChromosome, Object evaluateChromosomeFitness) {
         this.params = params;

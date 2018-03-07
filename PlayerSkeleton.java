@@ -274,58 +274,33 @@ class Species {
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {
-	public List<Neuron> neurons;
-	public Chromosome chromosome;
-	
+	private List<Neuron> neurons;
+    private Chromosome chromosome;
+	private Parameters params;
+
 	/**
 	 * A neural net built based on a specific chromosome data.
 	 * Call activate() to pass in the input and then getOuput() later.
 	 *
 	 * @param chromosome The chromosome to create the neural net information.
 	 */
-	public NeuralNet(Chromosome chromosome) {
+	public NeuralNet(Parameters params, Chromosome chromosome) {
+	    this.params = params;
 		this.chromosome = chromosome;
 
-		// DEBUG: Prints the chromosome on creation
-		// for (Gene g: chromosome.genes) {
-		// 	System.out.printf("ID: %d, From: %d, To: %d%n", g.id, g.from, g.to);
-		// }
-
 		// Create Neurons
-		neurons = new ArrayList<Neuron>();
-
-		for (int i=0; i<chromosome.getNeuronCount(); i++)
-			neurons.add(new Neuron());
+		neurons = new ArrayList<>();
+        neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
+        for (int i=0; i<params.INPUT_SIZE; i++)
+            neurons.add(new Neuron(ActivationType.LINEAR)); // Input Neurons
+        for (int i=0; i<chromosome.getNeuronCount()-params.INPUT_SIZE-1; i++)
+            neurons.add(new Neuron(ActivationType.SIGMOID)); // Output and Hidden Neurons
 
 		// Insert links
-		Neuron n;
 		for (Gene g: chromosome.getGenes()) {
-			if(g.isEnabled) {
-				n = neurons.get(g.to);
-				n.incomingNeurons.add(neurons.get(g.from));
-				n.incomingWeights.add(g.weight);
+			if (g.isEnabled) {
+				neurons.get(g.to).addLink(neurons.get(g.from), g.weight);
 			}
-		}
-
-		// Setup Bias Neuron
-		neurons.get(0).type = ActivationType.BIAS;
-		neurons.get(0).isActive = true;
-		
-		// Setup Input Neurons
-		for (int i=Params.INPUT_START_INDEX; i<Params.OUTPUT_START_INDEX; i++) {
-			n = neurons.get(i);
-			n.type = ActivationType.LINEAR;
-			n.isActive = true;
-		}
-
-		// Setup Output Neurons
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			neurons.get(i).type = ActivationType.SIGMOID;
-		}
-
-		// Setup Hidden Neurons
-		for (int i=Params.HIDDEN_START_INDEX; i<neurons.size(); i++) {
-			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 	}
 	
@@ -337,7 +312,7 @@ class NeuralNet {
 	 */
 	public List<Double> activate(List<Double> inputs) {
 		// Check input size
-		if (inputs.size() != Params.INPUT_SIZE) {
+		if (inputs.size() != params.INPUT_SIZE) {
 			System.out.println("Input size mismatch!");
 			return null;
 		}
@@ -346,20 +321,17 @@ class NeuralNet {
 		reset();
 
 		// Set Input Neurons
-		for (int i=0; i<Params.INPUT_SIZE; i++) {
-			neurons.get(Params.INPUT_START_INDEX+i).value = inputs.get(i);
+		for (int i=0; i<params.INPUT_SIZE; i++) {
+			neurons.get(i).setValue(inputs.get(i));
 		}
 
 		// Activate Output Neurons
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			neurons.get(i).activate();
+        List<Double> output = new ArrayList<>();
+		for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+			output.add(neurons.get(i).getValue());
 		}
 
-		// Return output as list
-        List<Double> output = new ArrayList<Double>();
-        for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-            output.add(neurons.get(i).value);
-        }
+		// Return output
         return output;
 	}
 	
@@ -371,62 +343,99 @@ class NeuralNet {
 	 */
 	public List<Double> getOutput() {
 		List<Double> output = new ArrayList<Double>();
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+		for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
 			output.add(neurons.get(i).value);
 		}
 		return output;
 	}
 
 	public void reset() {
-		for (int i=Params.OUTPUT_START_INDEX; i<neurons.size(); i++) {
-			neurons.get(i).isActive = false;
-		}
+		for (int i=params.OUTPUT_START_INDEX; i<neurons.size(); i++)
+			neurons.get(i).reset();
 	}
-}
 
-/**
- * Neuron refers to a specific node, be in input, output, hidden or bias. 
- * This stores information about the node, incoming neurons and their weights.
- */
-class Neuron {
-	public List<Neuron> incomingNeurons;
-	public List<Double> incomingWeights;
-	public ActivationType type;
-	public double value;
-	public boolean isActive;
+    /**
+     * Neuron refers to a specific node, be in input, output, hidden or bias.
+     * This stores information about the node and incoming links.
+     */
+    class Neuron {
+        private List<NeuronLink> incomingLinks;
+        private ActivationType type;
+        private double value;
+        private boolean isActive;
 
-	public Neuron() {
-		this.incomingNeurons = new ArrayList<Neuron>();
-		this.incomingWeights = new ArrayList<Double>();
-		this.type = ActivationType.SIGMOID;
-		this.value = 0;
-		this.isActive = false;
-	}
-	
-	/**
-	 * Recursively activate dependent neurons
-	 */
-	public void activate() {
-		double sum = 0;
-		Neuron n;
-		for (int i=0; i<incomingNeurons.size(); i++) {
-			n = incomingNeurons.get(i);
-			if(!n.isActive) {
-				n.activate();
-			}
-			sum += n.value * incomingWeights.get(i);
-		}
-		switch (this.type) {
-			case BIAS: this.value = 1;
-			case LINEAR: this.value = sum; break;
-			case SIGMOID: this.value = Calc.sigmoid(sum); break;
-		}
-		this.isActive = true;
-	}
-}
+        public Neuron(ActivationType type) {
+            this.incomingLinks = new ArrayList<>();
+            this.type = type;
+            this.value = 0;
+            this.isActive = false;
+        }
 
-enum ActivationType {
-	LINEAR, SIGMOID, BIAS
+        /**
+         * Recursively activate dependent neurons
+         */
+        public Neuron activate() {
+            double sum = 0;
+            for (NeuronLink link: incomingLinks) {
+                sum += link.getWeightedValue();
+            }
+            switch (this.type) {
+                case BIAS: this.value = 1;
+                case LINEAR: this.value = sum; break;
+                case SIGMOID: this.value = Calc.sigmoid(sum); break;
+            }
+            this.isActive = true;
+            return this;
+        }
+
+        public Neuron addLink(Neuron neuron, Double weight) {
+            incomingLinks.add(new NeuronLink(neuron, weight));
+            return this;
+        }
+
+        public Neuron setValue(double value) {
+            this.value = value;
+            this.isActive = true;
+            return this;
+        }
+
+        public double getValue() {
+            if (!this.isActive)
+                this.activate();
+            return this.value;
+        }
+
+        public Neuron reset() {
+            this.value = 0;
+            this.isActive = false;
+            return this;
+        }
+
+        /**
+         * Represents an incoming neuron link.
+         */
+        class NeuronLink {
+            private Neuron neuron;
+            private double weight;
+
+            /**
+             * @param neuron The id of the incoming neuron
+             * @param weight The weight of this link
+             */
+            public NeuronLink(Neuron neuron, double weight) {
+                this.neuron = neuron;
+                this.weight = weight;
+            }
+
+            public double getWeightedValue() {
+                return neuron.getValue()*weight;
+            }
+        }
+    }
+
+    enum ActivationType {
+        LINEAR, SIGMOID, BIAS
+    }
 }
 
 class Calc {
@@ -1026,7 +1035,8 @@ class EvaluateChromosomeFitnessTask extends RecursiveTask<Double> {
 
 	private double evaluateChromosomeFitness() {
 		State s = new State();
-		NeuralNet nn = new NeuralNet(chromosome);
+		// TODO Move this code out
+		NeuralNet nn = new NeuralNet(new Parameters(0,0,0), chromosome);
 		int moves = 0;
 
 		while(!s.hasLost()) {
@@ -1219,7 +1229,7 @@ class XORExperiment extends Experiment {
         };
         double error = 0;
 
-        NeuralNet nn = new NeuralNet(chromosome);
+        NeuralNet nn = new NeuralNet(params, chromosome);
         Double[] outputs;
         for (Double[][] c: concepts) {
             outputs = (Double[]) nn.activate(Arrays.asList(c[0])).toArray();

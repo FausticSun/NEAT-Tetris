@@ -990,72 +990,6 @@ class StateUtils {
 	}
 }
 
-// TODO Move this code somewhere
-/**
- * Evaluates the fitness task for that chromosome a number of times equal to Params.FITNESS_EVALUATIONS,
- * then returns the average of those fitness evaluations.
- *
- * Use by passing in the chromosome, then call create subtasks which will spawn the required
- * number of worker threads to do the simulation.
- */
-class EvaluateChromosomeFitnessTask extends RecursiveTask<Double> {
-	private Chromosome chromosome;
-	private boolean isSubTask;
-	public EvaluateChromosomeFitnessTask(Chromosome chromosome) {
-		this.chromosome = chromosome;
-		this.isSubTask = false;
-	}
-	public EvaluateChromosomeFitnessTask(Chromosome chromosome, boolean isSubTask) {
-		this.chromosome = chromosome;
-		this.isSubTask = isSubTask;
-	}
-	@Override
-	protected Double compute() {
-		if (!isSubTask) {
-			return ForkJoinTask.invokeAll(createSubtasks())
-				.stream()
-				.mapToDouble(ForkJoinTask::join)
-				.sum() / Params.FITNESS_EVALUATIONS;
-		} else {
-//			return evaluateChromosomeFitness();
-            return null;
-		}
-	}
-
-	private Collection<EvaluateChromosomeFitnessTask> createSubtasks() {
-		List<EvaluateChromosomeFitnessTask> dividedTasks = new ArrayList<>();
-		for (int i=0; i<Params.FITNESS_EVALUATIONS; i++)
-			dividedTasks.add(new EvaluateChromosomeFitnessTask(chromosome, true));
-		return dividedTasks;
-	}
-
-//	private double evaluateChromosomeFitness() {
-//		State s = new State();
-//		// TODO Move this code out
-//		NeuralNet nn = new NeuralNet(new Experiment.Parameters(0,0,0), chromosome);
-//		int moves = 0;
-//
-//		while(!s.hasLost()) {
-//			nn.activate(StateUtils.normalize(s));
-//			List<Double> output = nn.getOutput();
-//
-//			int orient = StateUtils.getOrient(s, output);
-//			int slot = StateUtils.getSlot(s, orient, output);
-//			if (slot == -1) {
-//				s.lost = true;
-//				continue;
-//			}
-//			s.makeMove(orient, slot);
-//			moves += 1;
-//		}
-//
-//		double fitness = (double) s.getRowsCleared();
-//		fitness = fitness == 0 ? moves / 100.0 : fitness;
-//		//System.out.printf("Chromosome #%d fitness computed with thread %s%n", chromosome.id, Thread.currentThread().getName());
-//		return fitness;s
-//	}
-}
-
 /**
  * Handles running an experiment
  */
@@ -1174,6 +1108,107 @@ class XORExperiment extends Experiment {
         return 1.0 - error;
     }
 }
+
+class TetrisExperiment extends Experiment {
+    private static final Logger LOGGER = Logger.getLogger( TetrisExperiment.class.getName() );
+    private static final int inputSize = State.ROWS * State.COLS + State.N_PIECES;
+    private static final int outputSize = 4 * State.COLS;
+    private static final int hiddenSize = 5;
+
+    public TetrisExperiment() {
+        super(inputSize, outputSize, hiddenSize);
+        this.params.FITNESS_LIMIT = 1000;
+        this.params.GENERATION_LIMIT = 1000;
+    }
+
+    @Override
+    public List<Integer[]> createChromosomeBlueprint() {
+        List<Integer[]> chromosomeBlueprint = new ArrayList<>();
+        // Connect bias and input nodes to 5 hidden nodes
+        for (int o=params.BIAS_START_INDEX; o<params.OUTPUT_START_INDEX; o++) {
+            for (int i=params.HIDDEN_START_INDEX; i<params.NETWORK_SIZE; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
+            }
+        }
+        // Connect 5 hidden nodes to output nodes
+        for (int o=params.HIDDEN_START_INDEX; o<params.NETWORK_SIZE; o++) {
+            for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
+            }
+        }
+        return chromosomeBlueprint;
+    }
+
+    @Override
+    public double evaluateChromosomeFitness(Chromosome chromosome) {
+        return (new EvaluateForTetrisTask(chromosome)).compute();
+    }
+
+
+    /**
+     * Evaluates the fitness task for that chromosome a number of times equal to Params.FITNESS_EVALUATIONS,
+     * then returns the average of those fitness evaluations.
+     *
+     * Use by passing in the chromosome, then call create subtasks which will spawn the required
+     * number of worker threads to do the simulation.
+     */
+    class EvaluateForTetrisTask extends RecursiveTask<Double> {
+        private Chromosome chromosome;
+        private boolean isSubTask;
+
+        public EvaluateForTetrisTask(Chromosome chromosome) {
+            this.chromosome = chromosome;
+            this.isSubTask = false;
+        }
+        public EvaluateForTetrisTask(Chromosome chromosome, boolean isSubTask) {
+            this.chromosome = chromosome;
+            this.isSubTask = isSubTask;
+        }
+        @Override
+        protected Double compute() {
+            if (!isSubTask) {
+                return ForkJoinTask.invokeAll(createSubtasks())
+                        .stream()
+                        .mapToDouble(ForkJoinTask::join)
+                        .sum() / params.FITNESS_EVALUATIONS;
+            } else {
+    			return evaluateChromosomeFitness();
+            }
+        }
+
+        private Collection<EvaluateForTetrisTask> createSubtasks() {
+            List<EvaluateForTetrisTask> dividedTasks = new ArrayList<>();
+            for (int i=0; i<params.FITNESS_EVALUATIONS; i++)
+                dividedTasks.add(new EvaluateForTetrisTask(chromosome, true));
+            return dividedTasks;
+        }
+
+        private double evaluateChromosomeFitness() {
+            State s = new State();
+            NeuralNet nn = new NeuralNet(params, chromosome);
+            int moves = 0;
+
+            while(!s.hasLost()) {
+                nn.activate(StateUtils.normalize(s));
+                List<Double> output = nn.getOutput();
+
+                int orient = StateUtils.getOrient(s, output);
+                int slot = StateUtils.getSlot(s, orient, output);
+                if (slot == -1) {
+                    s.lost = true;
+                    continue;
+                }
+                s.makeMove(orient, slot);
+                moves += 1;
+            }
+
+            double fitness = (double) s.getRowsCleared();
+            fitness = fitness == 0 ? moves / 100.0 : fitness;
+            return fitness;
+        }
+    }
+}
+
 
 class Population {
     private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );

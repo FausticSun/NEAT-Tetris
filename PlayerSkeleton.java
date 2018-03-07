@@ -1081,3 +1081,26 @@ class Globals {
 		return NODE_COUNT;
 	}
 }
+
+/**
+ * Handles running an experiment
+ */
+abstract class Experiment {
+    private Population population;
+    private Parameters parameters;
+
+    public Experiment(Parameters parameters) {
+        this.parameters = parameters;
+        this.population = new Population(this::createDefaultChromosomesome);
+    }
+
+    public void run() {
+        while (population.getHighestFitnessScore() < parameters.FITNESS_LIMIT &&
+                population.getGeneration() < parameters.GENERATION_LIMIT) {
+            population.advance();
+        }
+    }
+
+    abstract public Chromosome createDefaultChromosome();
+    abstract public int evaluateChromosomeFitness(Chromosome chromosome);
+}

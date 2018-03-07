@@ -1110,7 +1110,7 @@ class XORExperiment extends Experiment {
         NeuralNet nn = new NeuralNet(chromosome);
         Double[] outputs;
         for (Double[][] c: concepts) {
-            outputs = (Double[]) nn.activate(Arrays.asList(c[0])).toArray();
+            outputs = nn.activate(Arrays.asList(c[0])).toArray(new Double[1]);
             error += Math.pow(c[1][0] - outputs[0], 2);
         }
 

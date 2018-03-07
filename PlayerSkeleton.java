@@ -569,9 +569,10 @@ class Chromosome implements Comparable<Chromosome> {
 //	}
 
 	/**
-	 * mutates the chromosome randomly:
-	 * each gene can mutate weight or get disabled/enabled
-	 * chromosome can gain a new node or link
+	 * Mutates the chromosome randomly:
+	 * Each gene can mutate weight or get disabled/enabled
+	 * Chromosome can gain a new node or link
+     * Requires a reevaluation of fitness
 	 */
 	public Chromosome mutate() {
 		for (Gene gene : genes)
@@ -580,6 +581,7 @@ class Chromosome implements Comparable<Chromosome> {
 			mutateLink();
 		if (Math.random() < Params.NODE_MUTATION_CHANCE)
 			mutateNode();
+		this.fitness = -1;
 		return this;
 	}
 
@@ -788,6 +790,10 @@ class Chromosome implements Comparable<Chromosome> {
     public Chromosome setFitness(double fitness) {
 	    this.fitness = fitness;
 	    return this;
+    }
+
+    public boolean isEvaluated() {
+        return this.fitness != -1;
     }
 
     public int getNeuronCount() {
@@ -1050,42 +1056,6 @@ class EvaluateChromosomeFitnessTask extends RecursiveTask<Double> {
 //	}
 }
 
-class EvaluatePopulationFitnessTask extends RecursiveAction {
-	private List<Chromosome> population;
-	private Chromosome chromosome;
-	private boolean isSubTask;
-
-	public EvaluatePopulationFitnessTask(List<Chromosome> population) {
-		this.population = population;
-		this.isSubTask = false;
-	}
-	public EvaluatePopulationFitnessTask(Chromosome chromosome, boolean isSubTask) {
-		this.chromosome = chromosome;
-		this.isSubTask = isSubTask;
-	}
-
-	@Override
-	protected void compute() {
-		if (!isSubTask) {
-			ForkJoinTask.invokeAll(createSubtasks());
-		} else {
-			evaluateChromosomeFitness();
-		}
-	}
-
-	private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
-		List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<EvaluatePopulationFitnessTask>();
-		for (Chromosome c: population) {
-			dividedTasks.add(new EvaluatePopulationFitnessTask(c, true));
-		}
-		return dividedTasks;
-	}
-
-	private void evaluateChromosomeFitness() {
-		chromosome.setFitness(new EvaluateChromosomeFitnessTask(chromosome).compute());
-	}
-}
-
 /**
  * Handles running an experiment
  */
@@ -1291,11 +1261,7 @@ class Population {
         evaluateFitness();
         allocateChromosomesToSpecies();
         LOGGER.fine(String.format("Pruning extinct species"));
-        for (Iterator<Species> it = species.iterator(); iterator.hasNext()) {
-            Species s = it.next();
-            if (s.size() <= 0)
-                it.remove();
-        }
+        species.removeIf(s -> s.size() <= 0);
     }
 
     /**
@@ -1303,6 +1269,8 @@ class Population {
      */
     private void evaluateFitness() {
         LOGGER.fine(String.format("Evaluating population fitness"));
+        ForkJoinPool.commonPool().invoke(
+                new EvaluatePopulationFitnessTask(chromosomes, chromosomeFitnessEvaluator));
     }
 
     /**
@@ -1339,6 +1307,53 @@ class Population {
 
     public Innovator getInnovator() {
         return innovator;
+    }
+
+    /**
+     * Task for parallelized evaluations of population fitness
+     * Sets fitness in the chromosome on completion
+     */
+    class EvaluatePopulationFitnessTask extends RecursiveAction {
+        private List<Chromosome> population;
+        private Chromosome chromosome;
+        private Function<Chromosome, Double> chromosomeFitnessEvaluator;
+        private boolean isSubTask;
+
+        public EvaluatePopulationFitnessTask(List<Chromosome> population,
+                                             Function<Chromosome, Double> chromosomeFitnessEvaluator) {
+            this.population = population;
+            this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+            this.isSubTask = false;
+        }
+        public EvaluatePopulationFitnessTask(Chromosome chromosome,
+                                             Function<Chromosome, Double> chromosomeFitnessEvaluator,
+                                             boolean isSubTask) {
+            this.chromosome = chromosome;
+            this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+            this.isSubTask = isSubTask;
+        }
+
+        @Override
+        protected void compute() {
+            if (!isSubTask) {
+                ForkJoinTask.invokeAll(createSubtasks());
+            } else {
+                evaluateChromosomeFitness();
+            }
+        }
+
+        private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
+            List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<>();
+            for (Chromosome c: population) {
+                if (!c.isEvaluated())
+                    dividedTasks.add(new EvaluatePopulationFitnessTask(c, chromosomeFitnessEvaluator, true));
+            }
+            return dividedTasks;
+        }
+
+        private void evaluateChromosomeFitness() {
+            chromosome.setFitness(chromosomeFitnessEvaluator.apply(chromosome));
+        }
     }
 
     /**

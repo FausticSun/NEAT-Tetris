@@ -173,7 +173,7 @@ public class PlayerSkeleton {
 //	public void findSpecies(Chromosome chromosome, List<Species> speciesList) {
 //		for (Species species : speciesList) {
 //			if (chromosome.computeGeneDistance(species.representative) < COMPATIBILITY_THRESHOLD) {
-//				species.speciesPopulation.add(chromosome);
+//				species.chromosomes.add(chromosome);
 //				//System.out.println("chromosome added to species");
 //				return;
 //			}
@@ -205,73 +205,84 @@ class Species {
     public static double CROSSOVER_CHANCE;
     public static double COMPATIBILITY_THRESHOLD;
     public static double SURVIVAL_THRESHOLD;
-	public Chromosome representative;
-	public List<Chromosome> speciesPopulation;
-	public double averageFitness;
-	public int speciesID;
+    private Population pop;
+	private Chromosome representative;
+	private List<Chromosome> chromosomes;
+	private int stagnation;
+	private double averageFitness;
+	private double allocatedOffsprings;
+	private int speciesID;
 
-	public Species(Chromosome representative){
-		speciesPopulation = new ArrayList<Chromosome>();
+    /**
+     * @param pop The population the species belong to
+     * @param representative The species representative
+     */
+	public Species(Population pop, Chromosome representative){
+	    this.pop = pop;
+		this.chromosomes = new ArrayList<>();
 		this.representative = representative;
-		speciesPopulation.add(representative);
-//		speciesID = Globals.getSpeciesId();
+		this.chromosomes.add(representative);
+		this.speciesID = pop.getNewSpeciesId();
+		this.stagnation = 0;
+		this.averageFitness = -1;
+		this.allocatedOffsprings = -1;
 	}
 
 	/**
-	 * aggressively removes weaklings from the population
+	 * Slaughter chromosomes below survival threshold
 	 */
-	public void cull(List<Chromosome> population) {
-		Collections.sort(speciesPopulation);
-		int limit = (int)Math.ceil(speciesPopulation.size() * SURVIVAL_THRESHOLD);
-		speciesPopulation = speciesPopulation.subList(0, limit);
-		for (int i=limit; i< speciesPopulation.size(); i++) {
-			population.remove(speciesPopulation.get(i));
-		}
+	public void cull() {
+		Collections.sort(chromosomes);
+		int limit = (int) Math.ceil(chromosomes.size() * SURVIVAL_THRESHOLD);
+		chromosomes = chromosomes.subList(0, limit);
 	}
+
+    /**
+     * @return No. of chomosomes in the species
+     */
+	public int size() {
+	    return chromosomes.size();
+    }
 
 	/**
 	 *
 	 * @return returns the average fitness of the chromosomes in the species
 	 */
 	public double computeAverageFitness() {
-		if (speciesPopulation.size() == 0)
-			return 0;
-		double totalFitness = 0;
-		for (Chromosome chromosome : speciesPopulation)
-			totalFitness += chromosome.getFitness();
-		System.out.println("Species ID: " + speciesID + ", PopSize : " + speciesPopulation.size() + ", AverageFitness = " + totalFitness/speciesPopulation.size());
-		averageFitness = totalFitness/speciesPopulation.size();
-		return averageFitness;
+		if (chromosomes.size() == 0)
+			return averageFitness = 0;
+		return averageFitness = chromosomes.stream()
+                .mapToDouble(Chromosome::getFitness)
+                .sum() / chromosomes.size();
 	}
 
 	/**
-	 * creates baby chromosomes equal to the amount requested
+	 * creates baby chromosomes equal to the amount allocated
 	 * if there is only 1 parent, it will always crossbreed
 	 * otherwise, it will always breed with a different parent
-	 * @param numberOfChildren - number of chromosomes to populate return with
-	 * @param population - in case of cross-breeding
 	 * @return returns a list of new baby chromosomes
 	 */
-	public List<Chromosome> breed(int numberOfChildren, List<Chromosome> population) {
-		List<Chromosome> newChildren = new ArrayList<Chromosome>();
-		System.out.println("Species ID: " + speciesID + " breeding " + numberOfChildren + " new children.");
+	public List<Chromosome> produceAllocatedOffsprings() {
+		List<Chromosome> newChildren = new ArrayList<>();
+		newChildren.add(Collections.max(chromosomes)); // Add species champion
 		Chromosome parent1, parent2;
-		for (int i=0; i<numberOfChildren; i++) {
-			parent1 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
-			parent2 = parent1;
-			if (Math.random() < CROSSOVER_CHANCE || speciesPopulation.size() == 1) {//crossbreed with anything in pop
-				while (parent1 == parent2)
-					parent2 = population.get((int)Math.floor(Math.random() * population.size()));
-			}
-			else { //not crossbreed
-				while (parent1 == parent2)
-					parent2 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
-			}
-			// TODO Fix breeding code
-//			newChildren.add(parent1.breedWith(parent2));
+		while(newChildren.size() < allocatedOffsprings) {
+			parent1 = getRandomChromosome();
+			if (Math.random() < CROSSOVER_CHANCE)
+                parent2 = pop.getRandomChromosomeFromSpecies();
+			else
+			    parent2 = getRandomChromosome();
+			newChildren.add(parent1.breedWith(parent2));
 		}
 		return newChildren;
 	}
+
+    /**
+     * @return A random chromosome from this species
+     */
+	public Chromosome getRandomChromosome() {
+	    return chromosomes.get((new Random()).nextInt(chromosomes.size()));
+    }
 }
 
 // Feed-forward neural network
@@ -1191,7 +1202,6 @@ class TetrisExperiment extends Experiment {
 
 class Population {
     private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );
-    public static double SURVIVAL_THRESHOLD;
     public static int MAXIMUM_STAGNATION;
     public static int POPULATION_SIZE;
     public static int DEFAULT_NETWORK_SIZE;
@@ -1300,7 +1310,7 @@ class Population {
                         break found;
                     }
                 }
-                species.add(new Species(getNewSpeciesId(), c));
+                species.add(new Species(this, c));
             }
         }
     }
@@ -1317,6 +1327,14 @@ class Population {
      */
     public int getGeneration() {
         return this.generation;
+    }
+
+    /**
+     * Used by species to retrieve a random chromosome from another species for crossover
+     * @return A random chromosome from a random species
+     */
+    public Chromosome getRandomChromosomeFromSpecies() {
+        return species.get((new Random().nextInt(species.size()))).getRandomChromosome();
     }
 
     public Innovator getInnovator() {

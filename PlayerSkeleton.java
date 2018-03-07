@@ -573,7 +573,6 @@ class Chromosome implements Comparable<Chromosome> {
 	    return Double.compare(this.fitness, other.fitness);
 	}
 
-    // TODO Fix chromosome breeding
 	/**
 	 * Breeds 2 chromosomes together:
 	 * Same ID genes get randomly picked from one parent
@@ -583,74 +582,41 @@ class Chromosome implements Comparable<Chromosome> {
 	 * @param other - other chromosome being bred with
 	 * @return the baby chromosome
 	 */
-//	public Chromosome breedWith(Chromosome other) {
-//		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
-//		//Ensure that this has a higher fitness than other.
-//		if(other.fitness > this.fitness) {
-//			return other.breedWith(this);
-//		}
-//
-//		Chromosome chromosome = new Chromosome();
-//
-//		Collections.sort(this.genes);
-//		Collections.sort(other.genes);
-//		System.out.print("Printing i: [");
-//		for(int i = 0; i < this.genes.size() && i < 100; i++) {
-//			System.out.print(this.genes.get(i).id + " ");
-//		}
-//		System.out.println("]");
-//		System.out.print("Printing j: [");
-//		for(int j = 0; j < other.genes.size() && j < 100; j++) {
-//			System.out.print(other.genes.get(j).id + " ");
-//		}
-//		System.out.println("]");
-//		int i = 0, j = 0;
-//		while(i < genes.size() && j < other.genes.size()) {
-//			System.out.println("Matching " + i + " with " + j);
-//			if(genes.get(i).id == other.genes.get(j).id) {
-//				if (Math.random() < 0.5)
-//					chromosome.genes.add(this.genes.get(i));
-//				else
-//					chromosome.genes.add(other.genes.get(j));
-//				i++;
-//				j++;
-//				System.out.println("They match!");
-//				continue;
-//			}
-//			if(genes.get(i).id > other.genes.get(j).id) {
-//				if(this.fitness == other.fitness) {
-//					chromosome.genes.add(other.genes.get(j));
-//				}
-//				j++;
-//				System.out.println("j is lower.");
-//				continue;
-//			}
-//			if(other.genes.get(j).id > genes.get(i).id) {
-//				chromosome.genes.add(genes.get(i));
-//				System.out.println("i is lower.");
-//				i++;
-//				continue;
-//			}
-//		}
-//		if(i < genes.size() - 1) { //add the rest of the fitter chromosome
-//			for(; i < genes.size(); i++) {
-//				chromosome.genes.add(genes.get(i));
-//			}
-//		} else {
-//			//only add if other is as fit as I
-//			if(other.fitness == this.fitness) {
-//				for(; j < genes.size(); j++) {
-//					chromosome.genes.add(other.genes.get(j));
-//				}
-//			}
-//		}
-//		chromosome.neuronCount = neuronCount;
-//		if(this.fitness == other.fitness) {
-//			chromosome.neuronCount = Math.max(this.neuronCount, other.neuronCount);
-//		}
-//
-//		return chromosome;
-//	}
+	public Chromosome breedWith(Chromosome other) {
+		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
+		// Ensure that this has a higher fitness than other.
+		if(other.fitness > this.fitness)
+			return other.breedWith(this);
+
+        // Compare the parents
+        int[] structuralDifferences = calculateStructuralDifferences(other);
+
+		// Clone child from fitter parent
+		Chromosome child = new Chromosome(this);
+
+		// Randomly replace same genes from weaker parent
+        Collections.sort(child.genes);
+        Collections.sort(other.genes);
+        for (int i=0; i<structuralDifferences[SAME]; i++) {
+            if (Math.random() < 0.5) {
+                child.genes.remove(i);
+                child.genes.add(i, new Gene(other.genes.get(i)));
+            }
+        }
+
+        // Add excess and disjoint genes from weaker parent if
+        // fitness is the same
+        if (this.getFitness() == other.getFitness()) {
+            for (int i=structuralDifferences[SAME]; i<other.genes.size(); i++) {
+                child.genes.add(new Gene(other.genes.get(i)));
+            }
+        }
+
+		// Mutate child
+        child.mutate();
+
+		return child;
+	}
 
 	/**
 	 * Mutates the chromosome randomly:
@@ -798,7 +764,7 @@ class Chromosome implements Comparable<Chromosome> {
         ListIterator<Gene> listIt;
         if (thisMaxId > otherMaxId) {
             listIt = this.genes.listIterator(this.genes.size());
-        } else if (otherMaxId > thisMaxId) {
+        } else {
             listIt = other.genes.listIterator(other.genes.size());
         }
         while (listIt.previous().id > minMaxId) {

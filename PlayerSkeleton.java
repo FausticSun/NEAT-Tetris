@@ -664,54 +664,6 @@ class Chromosome implements Comparable<Chromosome> {
 		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
 	}
 
-	// TODO Port code over to experiment
-//	public static Chromosome createDefaultChromosome() {
-//		Chromosome c = new Chromosome();
-//		int hid = Params.HIDDEN_START_INDEX;
-//
-//		//defaultChromosome ids not set yet
-//		if (Globals.INNOVATION_MAP.get(0) == null)
-//			initializeStartingIds();
-//
-//		// Connect input neurons to a single hidden neuron
-//		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
-//			c.genes.add(new Gene(i + 1, i + 1, hid + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-//		}
-//		// Connect single hidden neuron to output neurons
-//		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-//			c.genes.add(new Gene(i + 1, hid + 1, i + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-//		}
-//
-//		return c;
-//	}
-
-    // TODO Verify if this code is necessary
-//	public Chromosome clone() {
-//		Chromosome c = new Chromosome();
-//		c.genes.addAll(this.genes);
-//		c.fitness = this.fitness;
-//		return c;
-//	}
-
-	public static void initializeStartingIds() {
-		int hid = Params.HIDDEN_START_INDEX;
-		int currentID;
-		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
-			Globals.getNodeId(); //initializes the node's existence
-			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(i + 1).put(hid + 1, currentID);
-		}
-		Globals.getNodeId(); //initializes hidden's node
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			Globals.getNodeId(); //initializes the node's existence
-		}
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(hid + 1).put(i + 1, currentID);
-		}
-	}
-
-
 	/**
 	 * computes distance between genes compared to another chromosome
 	 * used for species placement

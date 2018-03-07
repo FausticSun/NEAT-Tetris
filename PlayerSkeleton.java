@@ -1283,6 +1283,7 @@ class Population {
     public Population(Experiment.Parameters params,
                       Supplier<List<Integer[]>> chromosomeBlueprintCreator,
                       Function<Chromosome, Double> chromosomeFitnessEvaluator) {
+        LOGGER.info(String.format("Creating a new population"));
         this.chromosomeCount = 0;
         this.speciesCount = 0;
         this.chromosomes = new ArrayList<>(params.POPULATION_SIZE);
@@ -1293,6 +1294,8 @@ class Population {
         this.generation = 0;
         this.populate(
                 createDefaultChromosome(chromosomeBlueprintCreator.get()));
+        this.evaluateFitness();
+        this.allocateChromosomesToSpecies();
     }
 
     /**
@@ -1301,7 +1304,7 @@ class Population {
      */
     private void populate(Chromosome base) {
         for (int i=0; i<params.POPULATION_SIZE; i++)
-            chromosomes.add((new Chromosome(base)));
+            chromosomes.add((new Chromosome(base)).mutate());
     }
 
     /**
@@ -1348,9 +1351,7 @@ class Population {
             chromosomes.add(s.produceAllocatedOffsprings());
             s.clear();
         }
-        LOGGER.fine(String.format("Evaluating population fitness"));
-        evaluatePopulationFitness();
-        LOGGER.fine(String.format("Allocating chromosomes into species"));
+        evaluateFitness();
         allocateChromosomesToSpecies();
         LOGGER.fine(String.format("Pruning extinct species"));
         for (Iterator<Species> it = species.iterator(); iterator.hasNext()) {
@@ -1361,9 +1362,17 @@ class Population {
     }
 
     /**
+     * Evaluate fitness of population
+     */
+    private void evaluateFitness() {
+        LOGGER.fine(String.format("Evaluating population fitness"));
+    }
+
+    /**
      * Allocates chromosomes to existing species
      */
     private void allocateChromosomesToSpecies() {
+        LOGGER.fine(String.format("Allocating chromosomes into species"));
         for (Chromosome c: chromosomes) {
             found: {
                 for (Species s : species) {

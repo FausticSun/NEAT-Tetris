@@ -166,44 +166,45 @@ public class PlayerSkeleton {
 //		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
 //	}
 
-	/**
-	 * checks the current chromosome and adds it to a species list
-	 * @param chromosome - chromosome to be added to a species list
-	 */
-	public void findSpecies(Chromosome chromosome, List<Species> speciesList) {
-		for (Species species : speciesList) {
-			if (chromosome.computeGeneDistance(species.representative) < Params.COMPATIBILITY_THRESHOLD) {
-				species.speciesPopulation.add(chromosome);
-				//System.out.println("chromosome added to species");
-				return;
-			}
-		}
-		//did not fit into any species, creating new species
-		speciesList.add(new Species(chromosome));
-		//System.out.println("chromosome created new species");
-	}
-
-	/**
-	 * updates current best chromosome to the one with best fitness
-	 * @param population - list of all current chromosomes with updated fitness
-	 * @param fittestChromosome - current best chromosome
-	 */
-	public void updateFittest(List<Chromosome> population, Chromosome fittestChromosome){
-		for (Chromosome chromosome : population) {
-			if (fittestChromosome.getFitness() < chromosome.getFitness())
-				fittestChromosome = chromosome;
-		}
-	}
-
-	//implement this function to have a working system
-	public int pickMove(State s, int[][] legalMoves) {
-		return 0;
-	}
+//	/**
+//	 * checks the current chromosome and adds it to a species list
+//	 * @param chromosome - chromosome to be added to a species list
+//	 */
+//	public void findSpecies(Chromosome chromosome, List<Species> speciesList) {
+//		for (Species species : speciesList) {
+//			if (chromosome.computeGeneDistance(species.representative) < COMPATIBILITY_THRESHOLD) {
+//				species.speciesPopulation.add(chromosome);
+//				//System.out.println("chromosome added to species");
+//				return;
+//			}
+//		}
+//		//did not fit into any species, creating new species
+//		speciesList.add(new Species(chromosome));
+//		//System.out.println("chromosome created new species");
+//	}
+//
+//	/**
+//	 * updates current best chromosome to the one with best fitness
+//	 * @param population - list of all current chromosomes with updated fitness
+//	 * @param fittestChromosome - current best chromosome
+//	 */
+//	public void updateFittest(List<Chromosome> population, Chromosome fittestChromosome){
+//		for (Chromosome chromosome : population) {
+//			if (fittestChromosome.getFitness() < chromosome.getFitness())
+//				fittestChromosome = chromosome;
+//		}
+//	}
+//
+//	//implement this function to have a working system
+//	public int pickMove(State s, int[][] legalMoves) {
+//		return 0;
+//	}
 }
 
 class Species {
     public static double CROSSOVER_CHANCE;
     public static double COMPATIBILITY_THRESHOLD;
+    public static double SURVIVAL_THRESHOLD;
 	public Chromosome representative;
 	public List<Chromosome> speciesPopulation;
 	public double averageFitness;
@@ -213,7 +214,7 @@ class Species {
 		speciesPopulation = new ArrayList<Chromosome>();
 		this.representative = representative;
 		speciesPopulation.add(representative);
-		speciesID = Globals.getSpeciesId();
+//		speciesID = Globals.getSpeciesId();
 	}
 
 	/**
@@ -221,7 +222,7 @@ class Species {
 	 */
 	public void cull(List<Chromosome> population) {
 		Collections.sort(speciesPopulation);
-		int limit = (int)Math.ceil(speciesPopulation.size() * Params.SURVIVAL_THRESHOLD);
+		int limit = (int)Math.ceil(speciesPopulation.size() * SURVIVAL_THRESHOLD);
 		speciesPopulation = speciesPopulation.subList(0, limit);
 		for (int i=limit; i< speciesPopulation.size(); i++) {
 			population.remove(speciesPopulation.get(i));
@@ -258,7 +259,7 @@ class Species {
 		for (int i=0; i<numberOfChildren; i++) {
 			parent1 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
 			parent2 = parent1;
-			if (Math.random() < Params.CROSSOVER_CHANCE || speciesPopulation.size() == 1) {//crossbreed with anything in pop
+			if (Math.random() < CROSSOVER_CHANCE || speciesPopulation.size() == 1) {//crossbreed with anything in pop
 				while (parent1 == parent2)
 					parent2 = population.get((int)Math.floor(Math.random() * population.size()));
 			}
@@ -590,11 +591,9 @@ class Chromosome implements Comparable<Chromosome> {
      * Requires a reevaluation of fitness
 	 */
 	public Chromosome mutate() {
-		for (Gene gene : genes)
-			gene.mutate();
-		if (Math.random() < Params.LINK_MUTATION_CHANCE)
+		if (Math.random() < LINK_MUTATION_CHANCE)
 			mutateLink();
-		if (Math.random() < Params.NODE_MUTATION_CHANCE)
+		if (Math.random() < NODE_MUTATION_CHANCE)
 			mutateNode();
 		this.fitness = -1;
 		return this;
@@ -608,47 +607,47 @@ class Chromosome implements Comparable<Chromosome> {
 	 * TODO: refine with bellman's ford instead
 	 */
 	public void mutateLink() {
-		int startNode = -1;
-		int endNode = -1;
-		boolean foundPair = false;
-		for (int i = 0; i < 10; i++) { //try this 10 times or until success
-			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
-			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
-			foundPair = true;
-
-			if (startNode == endNode)
-				foundPair = false;
-
-			//check if the gene is already in the chromosome
-			for (Gene gene : genes)
-				if (startNode == gene.from && endNode == gene.to)
-					foundPair = false;
-
-			//if we found a pair to match, exit loop
-			if (foundPair)
-				break;
-		}
-
-		if (!foundPair) //break if can't find suitable pair
-			return;
-
-		System.out.println("Mutating new link between node " + startNode + " and node " + endNode);
-		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
-		if (linkID == null) { //link does not exist yet
-			//check if link fits our easy restriction
-			//Probable optimization: Perform DFS from end node to start node to check for links
-			//Problems: List of edges (Genes) is stored in a list and there is no way to know the list of
-			//edges from 1 node to another other than going through the list.
-			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
-				System.out.println("Link between nodes do not exist yet, creating new link");
-				linkID = Globals.getInnovationId();
-				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
-			} else {
-				System.out.println("Link is not valid, breaking out");
-				return;
-			}
-		}
-		genes.add(new Gene(linkID, startNode, endNode, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
+//		int startNode = -1;
+//		int endNode = -1;
+//		boolean foundPair = false;
+//		for (int i = 0; i < 10; i++) { //try this 10 times or until success
+//			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
+//			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
+//			foundPair = true;
+//
+//			if (startNode == endNode)
+//				foundPair = false;
+//
+//			//check if the gene is already in the chromosome
+//			for (Gene gene : genes)
+//				if (startNode == gene.from && endNode == gene.to)
+//					foundPair = false;
+//
+//			//if we found a pair to match, exit loop
+//			if (foundPair)
+//				break;
+//		}
+//
+//		if (!foundPair) //break if can't find suitable pair
+//			return;
+//
+//		System.out.println("Mutating new link between node " + startNode + " and node " + endNode);
+//		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
+//		if (linkID == null) { //link does not exist yet
+//			//check if link fits our easy restriction
+//			//Probable optimization: Perform DFS from end node to start node to check for links
+//			//Problems: List of edges (Genes) is stored in a list and there is no way to know the list of
+//			//edges from 1 node to another other than going through the list.
+//			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
+//				System.out.println("Link between nodes do not exist yet, creating new link");
+//				linkID = Globals.getInnovationId();
+//				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
+//			} else {
+//				System.out.println("Link is not valid, breaking out");
+//				return;
+//			}
+//		}
+//		genes.add(new Gene(linkID, startNode, endNode, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
 	}
 
 	/**
@@ -656,27 +655,27 @@ class Chromosome implements Comparable<Chromosome> {
 	 * can mutate a currently disabled node
 	 */
 	public void mutateNode() {
-		Gene chosenGene = genes.get((int) Math.floor(Math.random() * genes.size()));
-		genes.remove(chosenGene);
-		System.out.println("Mutating new node between node " + chosenGene.from + " and node " + chosenGene.to);
-		Integer geneID = Globals.NODE_MAP.get(chosenGene.from).get(chosenGene.to);
-		if (geneID == null) { //gene does not exist yet
-			System.out.println("node between nodes do not exist yet, creating new node");
-			//create new node from parents
-			geneID = Globals.getNodeId();
-			Globals.NODE_MAP.get(chosenGene.from).put(chosenGene.to, geneID);
-			Globals.NODE_MAP.get(chosenGene.to).put(chosenGene.from, geneID);
-
-			//create new links from parent to child
-			int linkID1 = Globals.getInnovationId();
-			Globals.INNOVATION_MAP.get(chosenGene.from).put(geneID, linkID1);
-			int linkID2 = Globals.getInnovationId();
-			Globals.INNOVATION_MAP.get(geneID).put(chosenGene.to, linkID2);
-		}
-		if (geneID > neuronCount)
-			neuronCount = geneID;
-		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
-		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
+//		Gene chosenGene = genes.get((int) Math.floor(Math.random() * genes.size()));
+//		genes.remove(chosenGene);
+//		System.out.println("Mutating new node between node " + chosenGene.from + " and node " + chosenGene.to);
+//		Integer geneID = Globals.NODE_MAP.get(chosenGene.from).get(chosenGene.to);
+//		if (geneID == null) { //gene does not exist yet
+//			System.out.println("node between nodes do not exist yet, creating new node");
+//			//create new node from parents
+//			geneID = Globals.getNodeId();
+//			Globals.NODE_MAP.get(chosenGene.from).put(chosenGene.to, geneID);
+//			Globals.NODE_MAP.get(chosenGene.to).put(chosenGene.from, geneID);
+//
+//			//create new links from parent to child
+//			int linkID1 = Globals.getInnovationId();
+//			Globals.INNOVATION_MAP.get(chosenGene.from).put(geneID, linkID1);
+//			int linkID2 = Globals.getInnovationId();
+//			Globals.INNOVATION_MAP.get(geneID).put(chosenGene.to, linkID2);
+//		}
+//		if (geneID > neuronCount)
+//			neuronCount = geneID;
+//		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
+//		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
 	}
 
 	/**
@@ -743,9 +742,9 @@ class Chromosome implements Comparable<Chromosome> {
 			}
 		}
 
-		distance += Params.C1 * numberOfExcessGenes / NormalizeValue;
-		distance += Params.C2 * numberOfDisjointGenes / NormalizeValue;
-		distance += Params.C3 * totalWeightDifferenceOfMatchingGenes / numberOfMatchingGenes;
+		distance += EXCESS_COEFFICIENT * numberOfExcessGenes / NormalizeValue;
+		distance += DISJOINT_COEFFICIENT * numberOfDisjointGenes / NormalizeValue;
+		distance += WEIGHT_DIFFERENCE_COEFFICIENT * totalWeightDifferenceOfMatchingGenes / numberOfMatchingGenes;
 		//System.out.println("geneDistance: " + distance + ", Chrom 1: " + id + ", Chrom 2: " + other.id);
 		return distance;
 	}
@@ -813,16 +812,6 @@ class Gene implements Comparable<Gene>{
         this.to = to;
         this.weight = weight;
         this.isEnabled = true;
-    }
-
-    public Gene mutate() {
-        if (Math.random() < DISABLE_MUTATION_CHANCE)
-            mutateDisable();
-        if (Math.random() < ENABLE_MUTATION_CHANCE)
-            mutateEnable();
-        if (Math.random() < WEIGHT_MUTATION_CHANCE)
-            mutateWeight();
-        return this;
     }
 
     public int compareTo(Gene other) {
@@ -980,7 +969,6 @@ abstract class Experiment {
         NeuralNet.INPUT_START_INDEX = params.INPUT_START_INDEX;
         NeuralNet.OUTPUT_START_INDEX = params.OUTPUT_START_INDEX;
         NeuralNet.HIDDEN_START_INDEX = params.HIDDEN_START_INDEX;
-        Population.SURVIVAL_THRESHOLD = params.SURVIVAL_THRESHOLD;
         Population.MAXIMUM_STAGNATION = params.MAXIMUM_STAGNATION;
         Population.POPULATION_SIZE = params.POPULATION_SIZE;
         Population.DEFAULT_NETWORK_SIZE = params.DEFAULT_NETWORK_SIZE;
@@ -994,6 +982,7 @@ abstract class Experiment {
         Chromosome.WEIGHT_DIFFERENCE_COEFFICIENT = params.WEIGHT_DIFFERENCE_COEFFICIENT;
         Species.CROSSOVER_CHANCE = params.CROSSOVER_CHANCE;
         Species.COMPATIBILITY_THRESHOLD = params.COMPATIBILITY_THRESHOLD;
+        Species.SURVIVAL_THRESHOLD = params.SURVIVAL_THRESHOLD;
         Gene.WEIGHT_MUTATION_RANGE = params.WEIGHT_MUTATION_RANGE;
         this.pop = new Population(this::createChromosomeBlueprint, this::evaluateChromosomeFitness);
     }
@@ -1199,7 +1188,6 @@ class TetrisExperiment extends Experiment {
         }
     }
 }
-
 
 class Population {
     private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );

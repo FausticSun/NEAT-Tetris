@@ -524,6 +524,11 @@ class Chromosome implements Comparable<Chromosome> {
     public static double EXCESS_COEFFICIENT;
     public static double WEIGHT_DIFFERENCE_COEFFICIENT;
 
+    // Array indices for stucturalDiff
+    private static final int SAME = 0;
+    private static final int DISJOINT = 1;
+    private static final int EXCESS = 2;
+
 	private Population pop;
     private int neuronCount;
 	private List<Gene> genes;
@@ -811,6 +816,51 @@ class Chromosome implements Comparable<Chromosome> {
 		//System.out.println("geneDistance: " + distance + ", Chrom 1: " + id + ", Chrom 2: " + other.id);
 		return distance;
 	}
+
+    /**
+     * Compare this chromosome with other chromosome and determine
+     * the number of same, excess and disjoint genes
+     * @param other Chromosome to compare with
+     * @return Number of same, excess and disjoint genes
+     */
+	public int[] calculateStructuralDifferences(Chromosome other) {
+	    int[] structuralDiff = new int[3];
+        Collections.sort(this.genes);
+        Collections.sort(other.genes);
+        // Get number of same genes
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        while (thisIt.hasNext() && otherIt.hasNext()) {
+            if(thisIt.next().id == otherIt.next().id)
+                structuralDiff[SAME]++;
+            else
+                break;
+        }
+        // Get number of excess genes
+        int thisMaxId = Collections.max(this.genes).id;
+        int otherMaxId = Collections.max(other.genes).id;
+        // There are no excess and disjoint
+        if (thisMaxId == otherMaxId)
+            return structuralDiff;
+        int minMaxId = Math.min(thisMaxId, otherMaxId);
+        // Compute excess genes
+        ListIterator<Gene> listIt;
+        if (thisMaxId > otherMaxId) {
+            listIt = this.genes.listIterator(this.genes.size());
+        } else if (otherMaxId > thisMaxId) {
+            listIt = other.genes.listIterator(other.genes.size());
+        }
+        while (listIt.previous().id > minMaxId) {
+            structuralDiff[EXCESS]++;
+        }
+        // Compute disjoint genes
+        while (thisIt.hasNext() && thisIt.next().id <= minMaxId)
+            structuralDiff[DISJOINT]++;
+        while (otherIt.hasNext() && otherIt.next().id <= minMaxId)
+            structuralDiff[DISJOINT]++;
+
+        return structuralDiff;
+    }
 
 	public double getFitness() {
 	    return this.fitness;

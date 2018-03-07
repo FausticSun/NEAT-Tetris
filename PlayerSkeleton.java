@@ -1396,11 +1396,13 @@ class Population {
          */
         public Chromosome.Gene innovateNode(int from, int to) {
             Integer[] key = new Integer[]{from, to};
-            if (!nodeInnovations.containsKey(key))
+            if (!nodeInnovations.containsKey(key)) {
+                int hiddenNeuron = getNewNeuronId();
                 nodeInnovations.put(key, new Chromosome.Gene[]{
-                        new Chromosome.Gene(getNewInnovationId(), from, getNewNeuronId()),
-                        new Chromosome.Gene(getNewInnovationId(), getNewNeuronId(), to),
+                        new Chromosome.Gene(getNewInnovationId(), from, hiddenNeuron),
+                        new Chromosome.Gene(getNewInnovationId(), hiddenNeuron, to),
                 });
+            }
             return new Chromosome.Gene(linkInnovations.get(key), true);
         }
 

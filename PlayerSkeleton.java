@@ -1228,7 +1228,7 @@ class TetrisExperiment extends Experiment {
 
         private double evaluateChromosomeFitness() {
             State s = new State();
-            NeuralNet nn = new NeuralNet(params, chromosome);
+            NeuralNet nn = new NeuralNet(chromosome);
             int moves = 0;
 
             while(!s.hasLost()) {

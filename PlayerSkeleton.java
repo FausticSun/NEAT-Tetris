@@ -1,6 +1,7 @@
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
+import java.util.logging.Logger;
 import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
@@ -22,7 +23,8 @@ public class PlayerSkeleton {
 	}
 
 	public PlayerSkeleton() {
-
+        Experiment ex = new XORExperiment();
+        ex.run();
     }
 
 //	public PlayerSkeleton() {
@@ -1162,7 +1164,7 @@ abstract class Experiment {
     public Experiment(int inputSize, int outputSize, int hiddenSize) {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.pop = new Population(params,
-                this::createDefaultChromosome,
+                this::createChromosomeBlueprint,
                 this::evaluateChromosomeFitness);
     }
 
@@ -1176,11 +1178,18 @@ abstract class Experiment {
         }
     }
 
-    abstract public Chromosome createDefaultChromosome();
+    /**
+     * Returns a blueprint in the form of integer arrays,
+     * each containing 2 integers, outgoing neuron id and incoming neuron id
+     * in that order.
+     * @return A blueprint to create a chromosome with
+     */
+    abstract public List<Integer[]> createChromosomeBlueprint();
     abstract public double evaluateChromosomeFitness(Chromosome chromosome);
 }
 
 class XORExperiment extends Experiment {
+    private static final Logger LOGGER = Logger.getLogger( XORExperiment.class.getName() );
     public XORExperiment() {
         super(2, 1, 0);
         this.params.FITNESS_LIMIT = 1;
@@ -1188,18 +1197,16 @@ class XORExperiment extends Experiment {
     }
 
     @Override
-    public Chromosome createDefaultChromosome() {
+    public List<Integer[]> createChromosomeBlueprint() {
         // Connect bias and input nodes to output nodes
-        ArrayList<Gene> genes = new ArrayList<>();
-        for (int i=params.BIAS_START_INDEX; i<params.OUTPUT_START_INDEX; i++) {
-            for (int o=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; o++) {
-                genes.add(pop.getInnovator().innovateLink(i, o));
+        List<Integer[]> chromosomeBlueprint = new ArrayList<>();
+        for (int o=params.BIAS_START_INDEX; o<params.OUTPUT_START_INDEX; o++) {
+            for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
             }
         }
 
-        // Create the default chromosome
-        Chromosome c = new Chromosome(this.pop, genes, params.NETWORK_SIZE);
-        return c;
+        return chromosomeBlueprint;
     }
 
     @Override
@@ -1262,6 +1269,8 @@ class Parameters {
 }
 
 class Population {
+    private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );
+
     private int chromosomeCount;
     private int generation;
     private Parameters params;
@@ -1270,7 +1279,7 @@ class Population {
     private Function<Chromosome, Double> chromosomeFitnessEvaluator;
 
     public Population(Parameters params,
-                      Supplier<Chromosome> defaultChromosomeCreator,
+                      Supplier<List<Integer[]>> chromosomeBlueprintCreator,
                       Function<Chromosome, Double> chromosomeFitnessEvaluator) {
         this.chromosomeCount = 0;
         this.chromosomes = new ArrayList<>(params.POPULATION_SIZE);
@@ -1278,7 +1287,8 @@ class Population {
         this.innovator = new Innovator(params.NETWORK_SIZE);
         this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
         this.generation = 0;
-        this.populate(defaultChromosomeCreator.get());
+        this.populate(
+                createDefaultChromosome(chromosomeBlueprintCreator.get()));
     }
 
     /**
@@ -1287,7 +1297,19 @@ class Population {
      */
     private void populate(Chromosome base) {
         for (int i=0; i<params.POPULATION_SIZE; i++)
-            chromosomes.add((new Chromosome(base)).mutate());
+            chromosomes.add((new Chromosome(base)));
+    }
+
+    /**
+     * Create a base chromosome from the supplied blueprint
+     * @param blueprint The blueprint to create the base chromosome with
+     * @return The base chromosome created from the blueprint
+     */
+    private Chromosome createDefaultChromosome(List<Integer[]> blueprint) {
+        List<Gene> genes = new ArrayList<>();
+        for (Integer[] b: blueprint)
+            this.innovator.innovateLink(b[0], b[1]);
+        return new Chromosome(this, genes, params.NETWORK_SIZE);
     }
 
     /**

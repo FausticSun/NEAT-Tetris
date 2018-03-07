@@ -831,19 +831,6 @@ class Chromosome implements Comparable<Chromosome> {
             this.isEnabled = other.isEnabled;
         }
 
-        /**
-         * Clones a gene from a reference gene and randomize its weight
-         * @param other
-         * @param isEnabled
-         */
-        public Gene(Gene other, boolean isEnabled) {
-            this.id = other.id;
-            this.from = other.from;
-            this.to = other.to;
-            this.weight = Math.random()*2-1;
-            this.isEnabled = isEnabled;
-        }
-
         public Gene(int id, int from, int to, double weight) {
             this.id = id;
             this.from = from;
@@ -852,13 +839,14 @@ class Chromosome implements Comparable<Chromosome> {
             this.isEnabled = true;
         }
 
-        public void mutate() {
+        public Gene mutate() {
             if (Math.random() < Params.DISABLE_MUTATION_CHANCE)
                 mutateDisable();
             if (Math.random() < Params.ENABLE_MUTATION_CHANCE)
                 mutateEnable();
             if (Math.random() < Params.WEIGHT_MUTATION_CHANCE)
                 mutateWeight();
+            return this;
         }
 
         public int compareTo(Gene other) {
@@ -868,25 +856,25 @@ class Chromosome implements Comparable<Chromosome> {
         /**
          * mutates by disabling a link
          */
-        public void mutateDisable() {
+        public Gene mutateDisable() {
             isEnabled = false;
+            return this;
         }
 
         /**
          * mutates by enabling a link
          */
-        public void mutateEnable() {
+        public Gene mutateEnable() {
             isEnabled = true;
+            return this;
         }
 
         /**
          * mutates by changing weight
          */
-        public void mutateWeight() {
-            if (Math.random() < 0.5)
-                weight += Math.random() * Params.WEIGHT_MUTATION_RANGE;
-            else
-                weight -= Math.random() * Params.WEIGHT_MUTATION_RANGE;
+        public Gene mutateWeight() {
+            weight += Math.random() * Params.WEIGHT_MUTATION_RANGE*2 - Params.WEIGHT_MUTATION_RANGE;
+            return this;
         }
     }
 }
@@ -1385,7 +1373,7 @@ class Population {
             Integer[] key = new Integer[]{from, to};
             if (!linkInnovations.containsKey(key))
                 linkInnovations.put(key, new Chromosome.Gene(getNewInnovationId(), from, to));
-            return new Chromosome.Gene(linkInnovations.get(key), true);
+            return (new Chromosome.Gene(linkInnovations.get(key))).mutateWeight();
         }
 
         /**
@@ -1403,7 +1391,7 @@ class Population {
                         new Chromosome.Gene(getNewInnovationId(), hiddenNeuron, to),
                 });
             }
-            return new Chromosome.Gene(linkInnovations.get(key), true);
+            return (new Chromosome.Gene(linkInnovations.get(key))).mutateWeight();
         }
 
         /**

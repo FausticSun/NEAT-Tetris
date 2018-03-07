@@ -22,143 +22,147 @@ public class PlayerSkeleton {
 	}
 
 	public PlayerSkeleton() {
-		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		if (EVOLVE) {
 
-			// populate chromosomes
-			List<Chromosome> population = new ArrayList<Chromosome>();
-			for (int i=0; i<Params.POPULATION_SIZE; i++){
-				population.add(Chromosome.createDefaultChromosome());
-			}
+    }
 
-			// mutate population
-			for (Chromosome chromosome : population)
-				chromosome.mutate();
-
-			List<Species> speciesList = new ArrayList<Species>();
-			for (Chromosome chromosome : population)
-				findSpecies(chromosome, speciesList);
-
-			//run NEAT
-			Chromosome fittestChromosome = population.get(0);
-			List<Chromosome> newChildren;
-			double highestFitness = -1;
-			int currentStagnation = 0;
-			double totalSpeciesFitness;
-			for (int i = 0; i < Params.GENERATION_LIMIT; i++) {
-				System.out.println("Current generation: " + i);
-				//evaluate fitness of chromosomes
-				//double fitness;
-				forkJoinPool.invoke(
-						new EvaluatePopulationFitnessTask(population));
-				//fitness = forkJoinPool.invoke(
-				//	new EvaluateChromosomeFitnessTask(Chromosome.createDefaultChromosome()));
-				for (Chromosome chromosome : population)
-					System.out.println("Chromosome #: " + chromosome.id + ", fitness: " + chromosome.fitness);
-
-				//update fitness and check stagnation
-				updateFittest(population, fittestChromosome);
-				if (highestFitness < fittestChromosome.fitness) {
-					highestFitness = fittestChromosome.fitness;
-					currentStagnation = 0;
-				} else {
-					currentStagnation++;
-				}
-				//if fitness limit reached, break
-				if (fittestChromosome.fitness > Params.FITNESS_LIMIT)
-					break;
-
-
-				// breed new generation
-				newChildren = new ArrayList<Chromosome>();
-				totalSpeciesFitness = 0;
-				for (Species species : speciesList) {
-					totalSpeciesFitness += species.computeAverageFitness();
-				}
-				// check for stagnation
-				System.out.println("Current Stagnation: " + currentStagnation);
-				if (currentStagnation >= Params.MAXIMUM_STAGNATION || totalSpeciesFitness == 0) { //wipe out everyone by ignoring them
-					System.out.println("stagnating population. culling");
-					currentStagnation = 0;
-					Collections.sort(population);
-					Chromosome chromosome;
-					for (int j=0; j<Params.POPULATION_SIZE; j++) {
-						chromosome = population.get(0).breedWith(population.get(1)); //breed only the fittest 2 chromosomes
-						newChildren.add(chromosome);
-					}
-				}
-				else { //do not wipe out everyone
-
-					// cull underperformers in each species
-					for (Species species : speciesList)
-						species.cull(population);
-
-					//breed in all species
-					int numberOfChildren;
-					List<Chromosome> speciesChildren;
-					for (Species species : speciesList) {
-						numberOfChildren = (int)Math.ceil(Params.POPULATION_SIZE*species.averageFitness/totalSpeciesFitness);
-						speciesChildren = species.breed(numberOfChildren, population);
-						newChildren.addAll(speciesChildren);
-					}
-				}
-
-				// mutate new children and sort them into species
-				speciesList = new ArrayList<Species>();
-				for (Chromosome chromosome : newChildren) {
-					chromosome.mutate();
-					findSpecies(chromosome, speciesList);
-				}
-
-				population = new ArrayList<Chromosome>();
-				population.addAll(newChildren);
-			}
-
-			forkJoinPool.invoke(
-					new EvaluatePopulationFitnessTask(population));
-
-			Collections.sort(population);
-			FittestChromosome fc = new FittestChromosome(population.get(0));
-			// TODO do something with fittest chromosome
-			System.out.println("Best fitness: " + population.get(0).fitness);
-			return;
-		}
-
-		State s = new State();
-		NeuralNet nn = new NeuralNet(Chromosome.createDefaultChromosome());
-
-		if (!HEADLESS)
-			new TFrame(s);
-		while(!s.hasLost()) {
-			nn.activate(StateUtils.normalize(s));
-			List<Double> output = nn.getOutput();
-			
-			// DEUBG: Output output weights
-			// for (double d: output)
-			// 	System.out.format("%.3f ", d);
-			// System.out.format("%n");
-
-			int orient = StateUtils.getOrient(s, output);
-			int slot = StateUtils.getSlot(s, orient, output);
-			if (slot == -1) {
-				s.lost = true;
-				continue;
-			}
-
-			s.makeMove(orient, slot);
-
-			if (!HEADLESS) {
-				s.draw();
-				s.drawNext(0,0);
-				try {
-					Thread.sleep(300);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
-	}
+//	public PlayerSkeleton() {
+//		ForkJoinPool forkJoinPool = new ForkJoinPool();
+//		if (EVOLVE) {
+//
+//			// populate chromosomes
+//			List<Chromosome> population = new ArrayList<Chromosome>();
+//			for (int i=0; i<Params.POPULATION_SIZE; i++){
+//				population.add(Chromosome.createDefaultChromosome());
+//			}
+//
+//			// mutate population
+//			for (Chromosome chromosome : population)
+//				chromosome.mutate();
+//
+//			List<Species> speciesList = new ArrayList<Species>();
+//			for (Chromosome chromosome : population)
+//				findSpecies(chromosome, speciesList);
+//
+//			//run NEAT
+//			Chromosome fittestChromosome = population.get(0);
+//			List<Chromosome> newChildren;
+//			double highestFitness = -1;
+//			int currentStagnation = 0;
+//			double totalSpeciesFitness;
+//			for (int i = 0; i < Params.GENERATION_LIMIT; i++) {
+//				System.out.println("Current generation: " + i);
+//				//evaluate fitness of chromosomes
+//				//double fitness;
+//				forkJoinPool.invoke(
+//						new EvaluatePopulationFitnessTask(population));
+//				//fitness = forkJoinPool.invoke(
+//				//	new EvaluateChromosomeFitnessTask(Chromosome.createDefaultChromosome()));
+//				for (Chromosome chromosome : population)
+//					System.out.println("Chromosome #: " + chromosome.id + ", fitness: " + chromosome.fitness);
+//
+//				//update fitness and check stagnation
+//				updateFittest(population, fittestChromosome);
+//				if (highestFitness < fittestChromosome.fitness) {
+//					highestFitness = fittestChromosome.fitness;
+//					currentStagnation = 0;
+//				} else {
+//					currentStagnation++;
+//				}
+//				//if fitness limit reached, break
+//				if (fittestChromosome.fitness > Params.FITNESS_LIMIT)
+//					break;
+//
+//
+//				// breed new generation
+//				newChildren = new ArrayList<Chromosome>();
+//				totalSpeciesFitness = 0;
+//				for (Species species : speciesList) {
+//					totalSpeciesFitness += species.computeAverageFitness();
+//				}
+//				// check for stagnation
+//				System.out.println("Current Stagnation: " + currentStagnation);
+//				if (currentStagnation >= Params.MAXIMUM_STAGNATION || totalSpeciesFitness == 0) { //wipe out everyone by ignoring them
+//					System.out.println("stagnating population. culling");
+//					currentStagnation = 0;
+//					Collections.sort(population);
+//					Chromosome chromosome;
+//					for (int j=0; j<Params.POPULATION_SIZE; j++) {
+//						chromosome = population.get(0).breedWith(population.get(1)); //breed only the fittest 2 chromosomes
+//						newChildren.add(chromosome);
+//					}
+//				}
+//				else { //do not wipe out everyone
+//
+//					// cull underperformers in each species
+//					for (Species species : speciesList)
+//						species.cull(population);
+//
+//					//breed in all species
+//					int numberOfChildren;
+//					List<Chromosome> speciesChildren;
+//					for (Species species : speciesList) {
+//						numberOfChildren = (int)Math.ceil(Params.POPULATION_SIZE*species.averageFitness/totalSpeciesFitness);
+//						speciesChildren = species.breed(numberOfChildren, population);
+//						newChildren.addAll(speciesChildren);
+//					}
+//				}
+//
+//				// mutate new children and sort them into species
+//				speciesList = new ArrayList<Species>();
+//				for (Chromosome chromosome : newChildren) {
+//					chromosome.mutate();
+//					findSpecies(chromosome, speciesList);
+//				}
+//
+//				population = new ArrayList<Chromosome>();
+//				population.addAll(newChildren);
+//			}
+//
+//			forkJoinPool.invoke(
+//					new EvaluatePopulationFitnessTask(population));
+//
+//			Collections.sort(population);
+//			FittestChromosome fc = new FittestChromosome(population.get(0));
+//			// TODO do something with fittest chromosome
+//			System.out.println("Best fitness: " + population.get(0).fitness);
+//			return;
+//		}
+//
+//		State s = new State();
+//		NeuralNet nn = new NeuralNet(Chromosome.createDefaultChromosome());
+//
+//		if (!HEADLESS)
+//			new TFrame(s);
+//		while(!s.hasLost()) {
+//			nn.activate(StateUtils.normalize(s));
+//			List<Double> output = nn.getOutput();
+//
+//			// DEUBG: Output output weights
+//			// for (double d: output)
+//			// 	System.out.format("%.3f ", d);
+//			// System.out.format("%n");
+//
+//			int orient = StateUtils.getOrient(s, output);
+//			int slot = StateUtils.getSlot(s, orient, output);
+//			if (slot == -1) {
+//				s.lost = true;
+//				continue;
+//			}
+//
+//			s.makeMove(orient, slot);
+//
+//			if (!HEADLESS) {
+//				s.draw();
+//				s.drawNext(0,0);
+//				try {
+//					Thread.sleep(300);
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}
+//		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
+//	}
 
 	/**
 	 * checks the current chromosome and adds it to a species list
@@ -184,7 +188,7 @@ public class PlayerSkeleton {
 	 */
 	public void updateFittest(List<Chromosome> population, Chromosome fittestChromosome){
 		for (Chromosome chromosome : population) {
-			if (fittestChromosome.fitness < chromosome.fitness)
+			if (fittestChromosome.getFitness() < chromosome.getFitness())
 				fittestChromosome = chromosome;
 		}
 	}
@@ -229,7 +233,7 @@ class Species {
 			return 0;
 		double totalFitness = 0;
 		for (Chromosome chromosome : speciesPopulation)
-			totalFitness += chromosome.fitness;
+			totalFitness += chromosome.getFitness();
 		System.out.println("Species ID: " + speciesID + ", PopSize : " + speciesPopulation.size() + ", AverageFitness = " + totalFitness/speciesPopulation.size());
 		averageFitness = totalFitness/speciesPopulation.size();
 		return averageFitness;
@@ -258,7 +262,8 @@ class Species {
 				while (parent1 == parent2)
 					parent2 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
 			}
-			newChildren.add(parent1.breedWith(parent2));
+			// TODO Fix breeding code
+//			newChildren.add(parent1.breedWith(parent2));
 		}
 		return newChildren;
 	}
@@ -287,12 +292,12 @@ class NeuralNet {
 		// Create Neurons
 		neurons = new ArrayList<Neuron>();
 
-		for (int i=0; i<chromosome.neuronCount+1; i++)
+		for (int i=0; i<chromosome.getNeuronCount(); i++)
 			neurons.add(new Neuron());
 
 		// Insert links
 		Neuron n;
-		for (Gene g: chromosome.genes) {
+		for (Gene g: chromosome.getGenes()) {
 			if(g.isEnabled) {
 				n = neurons.get(g.to);
 				n.incomingNeurons.add(neurons.get(g.from));
@@ -565,6 +570,7 @@ class Chromosome implements Comparable<Chromosome> {
 	    return Double.compare(this.fitness, other.fitness);
 	}
 
+    // TODO Fix chromosome breeding
 	/**
 	 * Breeds 2 chromosomes together:
 	 * Same ID genes get randomly picked from one parent
@@ -574,73 +580,74 @@ class Chromosome implements Comparable<Chromosome> {
 	 * @param other - other chromosome being bred with
 	 * @return the baby chromosome
 	 */
-	public Chromosome breedWith(Chromosome other) {
-		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
-		//Ensure that this has a higher fitness than other.
-		if(other.fitness > this.fitness) {
-			return other.breedWith(this);
-		}
-		Chromosome chromosome = new Chromosome();
-
-		Collections.sort(this.genes);
-		Collections.sort(other.genes);
-		System.out.print("Printing i: [");
-		for(int i = 0; i < this.genes.size() && i < 100; i++) {
-			System.out.print(this.genes.get(i).id + " ");
-		}
-		System.out.println("]");
-		System.out.print("Printing j: [");
-		for(int j = 0; j < other.genes.size() && j < 100; j++) {
-			System.out.print(other.genes.get(j).id + " ");
-		}
-		System.out.println("]");
-		int i = 0, j = 0;
-		while(i < genes.size() && j < other.genes.size()) {
-			System.out.println("Matching " + i + " with " + j);
-			if(genes.get(i).id == other.genes.get(j).id) {
-				if (Math.random() < 0.5)
-					chromosome.genes.add(this.genes.get(i));
-				else
-					chromosome.genes.add(other.genes.get(j));
-				i++;
-				j++;
-				System.out.println("They match!");
-				continue;
-			}
-			if(genes.get(i).id > other.genes.get(j).id) {
-				if(this.fitness == other.fitness) {
-					chromosome.genes.add(other.genes.get(j));
-				}
-				j++;
-				System.out.println("j is lower.");
-				continue;
-			}
-			if(other.genes.get(j).id > genes.get(i).id) {
-				chromosome.genes.add(genes.get(i));
-				System.out.println("i is lower.");
-				i++;
-				continue;
-			}
-		}
-		if(i < genes.size() - 1) { //add the rest of the fitter chromosome
-			for(; i < genes.size(); i++) {
-				chromosome.genes.add(genes.get(i));
-			}
-		} else {
-			//only add if other is as fit as I
-			if(other.fitness == this.fitness) {
-				for(; j < genes.size(); j++) {
-					chromosome.genes.add(other.genes.get(j));
-				}
-			}
-		}
-		chromosome.neuronCount = neuronCount;
-		if(this.fitness == other.fitness) {
-			chromosome.neuronCount = Math.max(this.neuronCount, other.neuronCount);
-		}
-
-		return chromosome;
-	}
+//	public Chromosome breedWith(Chromosome other) {
+//		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
+//		//Ensure that this has a higher fitness than other.
+//		if(other.fitness > this.fitness) {
+//			return other.breedWith(this);
+//		}
+//
+//		Chromosome chromosome = new Chromosome();
+//
+//		Collections.sort(this.genes);
+//		Collections.sort(other.genes);
+//		System.out.print("Printing i: [");
+//		for(int i = 0; i < this.genes.size() && i < 100; i++) {
+//			System.out.print(this.genes.get(i).id + " ");
+//		}
+//		System.out.println("]");
+//		System.out.print("Printing j: [");
+//		for(int j = 0; j < other.genes.size() && j < 100; j++) {
+//			System.out.print(other.genes.get(j).id + " ");
+//		}
+//		System.out.println("]");
+//		int i = 0, j = 0;
+//		while(i < genes.size() && j < other.genes.size()) {
+//			System.out.println("Matching " + i + " with " + j);
+//			if(genes.get(i).id == other.genes.get(j).id) {
+//				if (Math.random() < 0.5)
+//					chromosome.genes.add(this.genes.get(i));
+//				else
+//					chromosome.genes.add(other.genes.get(j));
+//				i++;
+//				j++;
+//				System.out.println("They match!");
+//				continue;
+//			}
+//			if(genes.get(i).id > other.genes.get(j).id) {
+//				if(this.fitness == other.fitness) {
+//					chromosome.genes.add(other.genes.get(j));
+//				}
+//				j++;
+//				System.out.println("j is lower.");
+//				continue;
+//			}
+//			if(other.genes.get(j).id > genes.get(i).id) {
+//				chromosome.genes.add(genes.get(i));
+//				System.out.println("i is lower.");
+//				i++;
+//				continue;
+//			}
+//		}
+//		if(i < genes.size() - 1) { //add the rest of the fitter chromosome
+//			for(; i < genes.size(); i++) {
+//				chromosome.genes.add(genes.get(i));
+//			}
+//		} else {
+//			//only add if other is as fit as I
+//			if(other.fitness == this.fitness) {
+//				for(; j < genes.size(); j++) {
+//					chromosome.genes.add(other.genes.get(j));
+//				}
+//			}
+//		}
+//		chromosome.neuronCount = neuronCount;
+//		if(this.fitness == other.fitness) {
+//			chromosome.neuronCount = Math.max(this.neuronCount, other.neuronCount);
+//		}
+//
+//		return chromosome;
+//	}
 
 	/**
 	 * mutates the chromosome randomly:
@@ -736,33 +743,34 @@ class Chromosome implements Comparable<Chromosome> {
 		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
 	}
 
-	public static Chromosome createDefaultChromosome() {
-		Chromosome c = new Chromosome();
-		int hid = Params.HIDDEN_START_INDEX;
+	// TODO Port code over to experiment
+//	public static Chromosome createDefaultChromosome() {
+//		Chromosome c = new Chromosome();
+//		int hid = Params.HIDDEN_START_INDEX;
+//
+//		//defaultChromosome ids not set yet
+//		if (Globals.INNOVATION_MAP.get(0) == null)
+//			initializeStartingIds();
+//
+//		// Connect input neurons to a single hidden neuron
+//		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
+//			c.genes.add(new Gene(i + 1, i + 1, hid + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
+//		}
+//		// Connect single hidden neuron to output neurons
+//		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
+//			c.genes.add(new Gene(i + 1, hid + 1, i + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
+//		}
+//
+//		return c;
+//	}
 
-		//defaultChromosome ids not set yet
-		if (Globals.INNOVATION_MAP.get(0) == null)
-			initializeStartingIds();
-
-		// Connect input neurons to a single hidden neuron
-		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
-			c.genes.add(new Gene(i + 1, i + 1, hid + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-		}
-		// Connect single hidden neuron to output neurons
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			c.genes.add(new Gene(i + 1, hid + 1, i + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-		}
-
-		return c;
-	}
-
-	public Chromosome clone() {
-		Chromosome c = new Chromosome();
-		c.genes.addAll(this.genes);
-		c.fitness = this.fitness;
-		//TODO set ID maybe?
-		return c;
-	}
+    // TODO Verify if this code is necessary
+//	public Chromosome clone() {
+//		Chromosome c = new Chromosome();
+//		c.genes.addAll(this.genes);
+//		c.fitness = this.fitness;
+//		return c;
+//	}
 
 	public static void initializeStartingIds() {
 		int hid = Params.HIDDEN_START_INDEX;
@@ -856,6 +864,19 @@ class Chromosome implements Comparable<Chromosome> {
 
 	public double getFitness() {
 	    return this.fitness;
+    }
+
+    public Chromosome setFitness(double fitness) {
+	    this.fitness = fitness;
+	    return this;
+    }
+
+    public int getNeuronCount() {
+	    return this.neuronCount;
+    }
+
+    public List<Gene> getGenes() {
+	    return this.genes;
     }
 }
 
@@ -1059,7 +1080,7 @@ class EvaluatePopulationFitnessTask extends RecursiveAction {
 	}
 
 	private void evaluateChromosomeFitness() {
-		chromosome.fitness = (new EvaluateChromosomeFitnessTask(chromosome).compute());
+		chromosome.setFitness(new EvaluateChromosomeFitnessTask(chromosome).compute());
 	}
 }
 
@@ -1172,7 +1193,7 @@ class XORExperiment extends Experiment {
         ArrayList<Gene> genes = new ArrayList<>();
         for (int i=params.BIAS_START_INDEX; i<params.OUTPUT_START_INDEX; i++) {
             for (int o=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; o++) {
-                genes.add(pop.innovator.innovateLink(i, o));
+                genes.add(pop.getInnovator().innovateLink(i, o));
             }
         }
 
@@ -1272,7 +1293,7 @@ class Population {
     /**
      * @return A new unique chromosome ID
      */
-    private int getNewChromosomeId() {
+    public int getNewChromosomeId() {
         return chromosomeCount++;
     }
 
@@ -1295,6 +1316,10 @@ class Population {
      */
     public int getGeneration() {
         return this.generation;
+    }
+
+    public Innovator getInnovator() {
+        return innovator;
     }
 }
 

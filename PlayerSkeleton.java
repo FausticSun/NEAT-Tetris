@@ -310,6 +310,31 @@ class Species {
 	public Chromosome getRandomChromosome() {
 	    return chromosomes.get((new Random()).nextInt(chromosomes.size()));
     }
+
+    /**
+     * Confirm that all chromosomes have been added and
+     * perform relevant computations
+     */
+    public void confirmSpecies() {
+        // Check for fitness improvement
+        double newBestFitness = Collections.max(chromosomes).getFitness();
+        if (bestFitness > newBestFitness) {
+            stagnation++;
+        } else {
+            bestFitness = newBestFitness;
+            stagnation = 0;
+        }
+        // Compute average fitness
+        averageFitness = computeAverageFitness();
+    }
+
+    public double getAverageFitness() {
+        return averageFitness;
+    }
+
+    public void setAllocatedOffsprings(int allocatedOffsprings) {
+        this.allocatedOffsprings = allocatedOffsprings;
+    }
 }
 
 // Feed-forward neural network
@@ -1313,6 +1338,8 @@ class Population {
         allocateChromosomesToSpecies();
         LOGGER.fine(String.format("Pruning extinct species"));
         species.removeIf(s -> s.size() <= 0);
+        LOGGER.fine(String.format("Allocate offsprings to species"));
+        allocateOffsprings();
     }
 
     /**
@@ -1342,7 +1369,18 @@ class Population {
         }
         // Species final computation
         for (Species s: species)
-            s.finalize();
+            s.confirmSpecies();
+    }
+
+    /**
+     * Allocate no. of offsprings allowed to each species
+     */
+    private void allocateOffsprings() {
+        double averageSum = species.stream()
+                .mapToDouble(Species::getAverageFitness)
+                .sum();
+        for (Species s: species)
+            s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
     }
 
     /**

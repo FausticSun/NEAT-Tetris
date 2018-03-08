@@ -1335,6 +1335,7 @@ class Population {
         LOGGER.fine(String.format("Evaluating population fitness"));
         ForkJoinPool.commonPool().invoke(
                 new EvaluatePopulationFitnessTask(chromosomes, chromosomeFitnessEvaluator));
+        LOGGER.info(String.format("Population max fitness: %f", Collections.max(chromosomes).getFitness()));
     }
 
     /**
@@ -1446,7 +1447,7 @@ class Population {
 
         private void evaluateChromosomeFitness() {
             chromosome.setFitness(chromosomeFitnessEvaluator.apply(chromosome));
-            LOGGER.finer(String.format("C%d has a fitness of %f",
+            LOGGER.finest(String.format("C%d has a fitness of %f",
                     chromosome.getId(),
                     chromosome.getFitness()));
         }

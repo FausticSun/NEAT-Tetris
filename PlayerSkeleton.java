@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
+    private static final Logger LOGGER = Logger.getLogger( PlayerSkeleton.class.getName() );
 	static boolean HEADLESS = false;
 	static boolean EVOLVE = false;
 

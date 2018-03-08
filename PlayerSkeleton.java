@@ -213,7 +213,7 @@ class Species {
 	private double bestFitness;
 	private double averageFitness;
 	private double allocatedOffsprings;
-	private int speciesID;
+	private int id;
 
     /**
      * @param pop The population the species belong to
@@ -224,7 +224,7 @@ class Species {
 		this.chromosomes = new ArrayList<>();
 		this.representative = representative;
 		this.chromosomes.add(representative);
-		this.speciesID = pop.getNewSpeciesId();
+		this.id = pop.getNewSpeciesId();
 		this.stagnation = 0;
 		this.averageFitness = -1;
 		this.allocatedOffsprings = -1;
@@ -335,6 +335,10 @@ class Species {
 
     public void setAllocatedOffsprings(int allocatedOffsprings) {
         this.allocatedOffsprings = allocatedOffsprings;
+    }
+
+    public int getId() {
+        return id;
     }
 }
 
@@ -516,6 +520,7 @@ class Calc {
 }
 
 class Chromosome implements Comparable<Chromosome> {
+    private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
     public static double WEIGHT_MUTATION_CHANCE;
     public static double NODE_MUTATION_CHANCE;
     public static double LINK_MUTATION_CHANCE;
@@ -548,7 +553,8 @@ class Chromosome implements Comparable<Chromosome> {
         this.neuronCount = neuronCount;
 		this.fitness = -1;
 		this.id = -1;
-	}
+        LOGGER.info(String.format("Base gene size %d", genes.size()));
+    }
 
     /**
      * Clones a chromosome. This should be the only way new chromosomes are created in the experiment.
@@ -562,6 +568,9 @@ class Chromosome implements Comparable<Chromosome> {
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
 		this.id = this.pop.getNewChromosomeId();
+		LOGGER.finest(String.format("Cloning C%d to C%d",
+                other.id,
+                this.id));
 	}
 
 	/**
@@ -626,6 +635,7 @@ class Chromosome implements Comparable<Chromosome> {
      * Requires a reevaluation of fitness
 	 */
 	public Chromosome mutate() {
+	    LOGGER.finest(String.format("Mutating C%d", this.id));
 		if (Math.random() < LINK_MUTATION_CHANCE)
 			mutateLink();
 		if (Math.random() < NODE_MUTATION_CHANCE)
@@ -801,6 +811,9 @@ class Chromosome implements Comparable<Chromosome> {
 	    return this.genes;
     }
 
+    public int getId() {
+	    return this.id;
+    }
 }
 
 class Gene implements Comparable<Gene>{
@@ -983,6 +996,7 @@ class StateUtils {
  * Handles running an experiment
  */
 abstract class Experiment {
+    private static final Logger LOGGER = Logger.getLogger( Experiment.class.getName() );
     public static double FITNESS_LIMIT;
     public static int GENERATION_LIMIT;
     protected Population pop;
@@ -1022,6 +1036,7 @@ abstract class Experiment {
      * Runs the experiment until fitness limit or generation limit is reached
      */
     public void run() {
+        LOGGER.info(String.format("Running the experiment"));
         while (pop.getFittestChromosome().getFitness() < params.FITNESS_LIMIT &&
                 pop.getGeneration() < params.GENERATION_LIMIT) {
             pop.advance();
@@ -1079,6 +1094,7 @@ abstract class Experiment {
 class XORExperiment extends Experiment {
     private static final Logger LOGGER = Logger.getLogger( XORExperiment.class.getName() );
     public XORExperiment() {
+    	LOGGER.info(String.format("Initializing an XOR Experiment"));
         this.params = new Parameters(2, 1, 0);
         this.params.FITNESS_LIMIT = 1;
         this.params.GENERATION_LIMIT = 100;
@@ -1264,9 +1280,10 @@ class Population {
      * @return The base chromosome created from the blueprint
      */
     private Chromosome createDefaultChromosome(List<Integer[]> blueprint) {
+        LOGGER.fine(String.format("Creating a new default chromosome"));
         List<Gene> genes = new ArrayList<>();
         for (Integer[] b: blueprint)
-            this.innovator.innovateLink(b[0], b[1]);
+            genes.add(this.innovator.innovateLink(b[0], b[1]));
         return new Chromosome(this, genes, DEFAULT_NETWORK_SIZE);
     }
 
@@ -1293,7 +1310,7 @@ class Population {
     public void advance() {
         generation++;
         chromosomes.clear();
-        LOGGER.info(String.format("Entering Generation: %n", generation));
+        LOGGER.info(String.format("Entering Generation: %d", generation));
         LOGGER.fine(String.format("Slaughtering the weak of each species"));
         for (Species s: species)
             s.cull();
@@ -1328,14 +1345,21 @@ class Population {
             found: {
                 for (Species s: species) {
                     if (s.compatibleWith(c)) {
+                        LOGGER.finest(String.format("Adding C%d to S%d",
+                                c.getId(),
+                                s.getId()));
                         s.add(c);
                         break found;
                     }
                 }
                 species.add(new Species(this, c));
+                LOGGER.finer(String.format("Species not found, creating S%d with C%d as rep",
+                        species.get(species.size()-1).getId(),
+                        c.getId()));
             }
         }
         // Species final computation
+        LOGGER.fine(String.format("All species allocated, calcuating species fitness"));
         for (Species s: species)
             s.confirmSpecies();
     }
@@ -1421,6 +1445,9 @@ class Population {
 
         private void evaluateChromosomeFitness() {
             chromosome.setFitness(chromosomeFitnessEvaluator.apply(chromosome));
+            LOGGER.finer(String.format("C%d has a fitness of %f",
+                    chromosome.getId(),
+                    chromosome.getFitness()));
         }
     }
 
@@ -1450,9 +1477,14 @@ class Population {
          * @return A new gene connecting the neurons
          */
         public Gene innovateLink(int from, int to) {
+            LOGGER.finest(String.format("Link innovation requested %d -> %d",
+                    from, to));
             Integer[] key = new Integer[]{from, to};
-            if (!linkInnovations.containsKey(key))
+            if (!linkInnovations.containsKey(key)) {
+                LOGGER.finest(String.format("Link innovation %d -> %d did not exist, creating",
+                        from, to));
                 linkInnovations.put(key, new Gene(getNewInnovationId(), from, to));
+            }
             return (new Gene(linkInnovations.get(key))).mutateWeight();
         }
 

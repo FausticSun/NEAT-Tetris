@@ -345,6 +345,7 @@ class Species {
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {
+    private static final Logger LOGGER = Logger.getLogger( NeuralNet.class.getName() );
     public static int INPUT_SIZE;
     public static int OUTPUT_SIZE;
     public static int BIAS_START_INDEX;
@@ -388,7 +389,7 @@ class NeuralNet {
 	public List<Double> activate(List<Double> inputs) {
 		// Check input size
 		if (inputs.size() != INPUT_SIZE) {
-			System.out.println("Input size mismatch!");
+			LOGGER.warning("Input size mismatch!");
 			return null;
 		}
 
@@ -593,11 +594,11 @@ class Chromosome implements Comparable<Chromosome> {
 	 * @return the baby chromosome
 	 */
 	public Chromosome breedWith(Chromosome other) {
-		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
 		// Ensure that this has a higher fitness than other.
 		if(other.fitness > this.fitness)
 			return other.breedWith(this);
 
+        LOGGER.finer(String.format("Breeding C%d with C%d", this.id, other.id));
         // Compare the parents
         int[] structuralDifferences = calculateStructuralDifferences(other);
 

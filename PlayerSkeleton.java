@@ -1380,6 +1380,10 @@ class Population {
         double averageSum = species.stream()
                 .mapToDouble(Species::getAverageFitness)
                 .sum();
+        if (species.size() == 1) {
+            species.get(0).setAllocatedOffsprings(POPULATION_SIZE);
+            return;
+        }
         for (Species s: species)
             s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
     }

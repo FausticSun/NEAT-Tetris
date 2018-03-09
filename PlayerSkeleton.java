@@ -197,6 +197,10 @@ class Species {
         averageFitness = computeAverageFitness();
     }
 
+    public int getStagnation() {
+        return stagnation;
+    }
+
     public double getAverageFitness() {
         return averageFitness;
     }
@@ -1139,12 +1143,12 @@ class TetrisExperiment extends Experiment {
     public TetrisExperiment() {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
-        this.params.GENERATION_LIMIT = 300;
-        this.params.POPULATION_SIZE = 100;
-        this.params.FITNESS_EVALUATIONS = 20;
-        this.params.COMPATIBILITY_THRESHOLD = 0.1;
-        this.params.TARGET_SPECIES = 10;
-        this.params.COMPAT_MOD = 0.03;
+        this.params.GENERATION_LIMIT = 1000;
+        this.params.POPULATION_SIZE = 150;
+        this.params.FITNESS_EVALUATIONS = 100;
+        this.params.COMPATIBILITY_THRESHOLD = 5;
+        this.params.TARGET_SPECIES = 20;
+        this.params.COMPAT_MOD = 0.3;
         super.setup();
     }
 
@@ -1275,7 +1279,7 @@ class Population {
      */
     private void populate(Chromosome base) {
         for (int i=0; i<POPULATION_SIZE; i++)
-            chromosomes.add((new Chromosome(base)).mutateAllWeights());
+            chromosomes.add((new Chromosome(base)).mutateAllWeights().mutate());
     }
 
     /**
@@ -1326,6 +1330,7 @@ class Population {
             chromosomes.addAll(s.produceAllocatedOffsprings());
             s.clear();
         }
+        LOGGER.info(String.format("Population Size: %d", chromosomes.size()));
         evaluateFitness();
         allocateChromosomesToSpecies();
         LOGGER.fine(String.format("Allocate offsprings to species"));
@@ -1366,11 +1371,27 @@ class Population {
             }
         }
         LOGGER.fine(String.format("Pruning extinct species"));
-        species.removeIf(s -> s.size() <= 0);
+        Species s;
+        for (Iterator<Species> it = species.iterator(); it.hasNext();) {
+            s = it.next();
+            if (s.size() <= 0) {
+                LOGGER.finer(String.format("S%d is extinct", s.getId()));
+                it.remove();
+            }
+        }
         // Species final computation
         LOGGER.fine(String.format("All species allocated, calculating species fitness"));
-        for (Species s: species)
-            s.confirmSpecies();
+        for (Species sp: species)
+            sp.confirmSpecies();
+        LOGGER.fine(String.format("Culling stagnant species"));
+        for (Iterator<Species> it = species.iterator(); it.hasNext();) {
+            s = it.next();
+            if (s.getStagnation() >= MAXIMUM_STAGNATION) {
+                LOGGER.finer(String.format("S%d is stagnant", s.getId()));
+                it.remove();
+            }
+        }
+        LOGGER.info(String.format("Total no. of species: %d", species.size()));
     }
 
     /**

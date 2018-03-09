@@ -640,6 +640,15 @@ class Chromosome implements Comparable<Chromosome> {
     }
 
     /**
+     * Mutate all gene weights
+     */
+    public Chromosome mutateAllWeights() {
+	    for (Gene g: genes)
+	        g.mutateWeight();
+	    return this;
+    }
+
+    /**
      * Perform a dfs from from to to
      * @param from The node to start from
      * @param to The node to end at
@@ -1254,8 +1263,10 @@ class Population {
         this.populate(
                 createDefaultChromosome(chromosomeBlueprintCreator.get()));
         this.evaluateFitness();
-        this.allocateChromosomesToSpecies();
-		this.allocateOffsprings();
+        allocateChromosomesToSpecies();
+        LOGGER.fine(String.format("Allocate offsprings to species"));
+        allocateOffsprings();
+        dynamicThresholding();
     }
 
     /**
@@ -1264,7 +1275,7 @@ class Population {
      */
     private void populate(Chromosome base) {
         for (int i=0; i<POPULATION_SIZE; i++)
-            chromosomes.add((new Chromosome(base)).mutate());
+            chromosomes.add((new Chromosome(base)).mutateAllWeights());
     }
 
     /**

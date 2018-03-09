@@ -157,7 +157,8 @@ class Species {
      */
 	public boolean compatibleWith(Chromosome c) {
 	    double distance = representative.distanceFrom(c);
-	    LOGGER.finer(String.format("C%d is %f away from S%d", c.getId(), distance, this.id));
+	    LOGGER.finest(String.format("C%d is %f away from S%d with threshold %f",
+                c.getId(), distance, this.id, Species.COMPATIBILITY_THRESHOLD));
         return distance < COMPATIBILITY_THRESHOLD;
     }
 
@@ -993,6 +994,8 @@ abstract class Experiment {
         Population.MAXIMUM_STAGNATION = params.MAXIMUM_STAGNATION;
         Population.POPULATION_SIZE = params.POPULATION_SIZE;
         Population.DEFAULT_NETWORK_SIZE = params.DEFAULT_NETWORK_SIZE;
+        Population.TARGET_SPECIES = params.TARGET_SPECIES;
+        Population.COMPAT_MOD = params.COMPAT_MOD;
         Chromosome.WEIGHT_MUTATION_CHANCE = params.WEIGHT_MUTATION_CHANCE;
         Chromosome.NODE_MUTATION_CHANCE = params.NODE_MUTATION_CHANCE;
         Chromosome.LINK_MUTATION_CHANCE = params.LINK_MUTATION_CHANCE;
@@ -1055,10 +1058,12 @@ abstract class Experiment {
         public double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
         public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
         public double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
-        public double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
+        public double COMPATIBILITY_THRESHOLD = 0.1; // Starting threshold for measuring species compatibility
         public double DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
         public double EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
         public double WEIGHT_DIFFERENCE_COEFFICIENT = 3; // Coefficient for average weight difference
+        public int TARGET_SPECIES = 20; // No. of species to target using dynamic thresholding
+        public double COMPAT_MOD = 0.3; // Amount to tweak compatibility threshold by
 
         public Parameters(int inputSize, int outputSize, int hiddenSize) {
             this.INPUT_SIZE = inputSize;
@@ -1127,7 +1132,9 @@ class TetrisExperiment extends Experiment {
         this.params.GENERATION_LIMIT = 100;
         this.params.POPULATION_SIZE = 100;
         this.params.FITNESS_EVALUATIONS = 10;
-        this.params.COMPATIBILITY_THRESHOLD = 1;
+        this.params.COMPATIBILITY_THRESHOLD = 0.1;
+        this.params.TARGET_SPECIES = 20;
+        this.params.COMPAT_MOD = 0.05;
         super.setup();
     }
 
@@ -1223,6 +1230,8 @@ class Population {
     public static int MAXIMUM_STAGNATION;
     public static int POPULATION_SIZE;
     public static int DEFAULT_NETWORK_SIZE;
+    public static int TARGET_SPECIES;
+    public static double COMPAT_MOD;
     private int chromosomeCount;
     private int speciesCount;
     private int generation;
@@ -1307,10 +1316,9 @@ class Population {
         }
         evaluateFitness();
         allocateChromosomesToSpecies();
-        LOGGER.fine(String.format("Pruning extinct species"));
-        species.removeIf(s -> s.size() <= 0);
         LOGGER.fine(String.format("Allocate offsprings to species"));
         allocateOffsprings();
+        dynamicThresholding();
     }
 
     /**
@@ -1345,8 +1353,10 @@ class Population {
                         c.getId()));
             }
         }
+        LOGGER.fine(String.format("Pruning extinct species"));
+        species.removeIf(s -> s.size() <= 0);
         // Species final computation
-        LOGGER.fine(String.format("All species allocated, calcuating species fitness"));
+        LOGGER.fine(String.format("All species allocated, calculating species fitness"));
         for (Species s: species)
             s.confirmSpecies();
     }
@@ -1360,6 +1370,16 @@ class Population {
                 .sum();
         for (Species s: species)
             s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
+    }
+
+    /**
+     * Change the compatibility threshold depending on number of species
+     */
+    private void dynamicThresholding() {
+        if (species.size() < TARGET_SPECIES)
+            Species.COMPATIBILITY_THRESHOLD -= COMPAT_MOD;
+        else if (species.size() > TARGET_SPECIES)
+            Species.COMPATIBILITY_THRESHOLD += COMPAT_MOD;
     }
 
     /**

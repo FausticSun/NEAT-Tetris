@@ -124,6 +124,7 @@ class Species {
 			return averageFitness = 0;
 		return averageFitness = chromosomes.stream()
                 .mapToDouble(Chromosome::getFitness)
+                .map(f -> f / chromosomes.size() - 1)
                 .sum() / chromosomes.size();
 	}
 

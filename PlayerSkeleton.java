@@ -653,10 +653,8 @@ class Chromosome implements Comparable<Chromosome> {
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());
 		int[] structuralDifference = calculateStructuralDifferences(other);
         double averageWeightDifferences = 0;
-        for (int i=0; i<structuralDifference[SAME]; i++) {
-            averageWeightDifferences += this.genes.get(i).weight;
-            averageWeightDifferences -= other.genes.get(i).weight;
-        }
+        for (int i=0; i<structuralDifference[SAME]; i++)
+            averageWeightDifferences += Math.abs(this.genes.get(i).weight - other.genes.get(i).weight);
         averageWeightDifferences = averageWeightDifferences / structuralDifference[SAME];
 		distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
 		distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;

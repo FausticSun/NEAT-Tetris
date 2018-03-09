@@ -234,7 +234,7 @@ class Species {
 	 * Slaughter chromosomes below survival threshold
 	 */
 	public void cull() {
-		Collections.sort(chromosomes);
+		Collections.sort(chromosomes, Collections.reverseOrder());
 		int limit = (int) Math.ceil(chromosomes.size() * SURVIVAL_THRESHOLD);
 		chromosomes = chromosomes.subList(0, limit);
 	}
@@ -1157,8 +1157,8 @@ class XORExperiment extends Experiment {
     public XORExperiment() {
     	LOGGER.info(String.format("Initializing an XOR Experiment"));
         this.params = new Parameters(2, 1, 0);
-        this.params.FITNESS_LIMIT = 1;
-        this.params.GENERATION_LIMIT = 100;
+        this.params.FITNESS_LIMIT = 0.99999;
+        this.params.GENERATION_LIMIT = 300;
         super.setup();
     }
 
@@ -1205,7 +1205,7 @@ class TetrisExperiment extends Experiment {
     public TetrisExperiment() {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
-        this.params.GENERATION_LIMIT = 1000;
+        this.params.GENERATION_LIMIT = 300;
         super.setup();
     }
 

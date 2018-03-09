@@ -62,6 +62,7 @@ public class PlayerSkeleton {
 }
 
 class Species {
+    private static final Logger LOGGER = Logger.getLogger( Species.class.getName() );
     public static double CROSSOVER_CHANCE;
     public static double COMPATIBILITY_THRESHOLD;
     public static double SURVIVAL_THRESHOLD;
@@ -155,7 +156,9 @@ class Species {
      * @return True if compatible, False otherwise
      */
 	public boolean compatibleWith(Chromosome c) {
-        return representative.distanceFrom(c) < COMPATIBILITY_THRESHOLD;
+	    double distance = representative.distanceFrom(c);
+	    LOGGER.finer(String.format("C%d is %f away from S%d", c.getId(), distance, this.id));
+        return distance < COMPATIBILITY_THRESHOLD;
     }
 
     /**

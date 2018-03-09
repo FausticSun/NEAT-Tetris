@@ -653,7 +653,6 @@ class Chromosome implements Comparable<Chromosome> {
         randomNumber -= NODE_MUTATION_CHANCE;
 		if (randomNumber < WEIGHT_MUTATION_CHANCE)
         {
-            genes.get((int)Math.floor(Math.random() * genes.size())).mutateWeight();
             mutateGeneWeight();
             return this;
         }
@@ -742,6 +741,14 @@ class Chromosome implements Comparable<Chromosome> {
 //		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
 //		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
 	}
+
+
+    /**
+     * Select a random gene and mutates its weight
+     */
+	public void mutateGeneWeight() {
+        genes.get((new Random()).nextInt(genes.size())).mutateWeight();
+    }
 
 	/**
 	 * computes distance between genes compared to another chromosome

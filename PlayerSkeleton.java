@@ -670,48 +670,57 @@ class Chromosome implements Comparable<Chromosome> {
 	 */
 	public void mutateLink() {
 	    int from, to;
+	    boolean isExist = false;
 
-//		int startNode = -1;
-//		int endNode = -1;
-//		boolean foundPair = false;
-//		for (int i = 0; i < 10; i++) { //try this 10 times or until success
-//			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
-//			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
-//			foundPair = true;
-//
-//			if (startNode == endNode)
-//				foundPair = false;
-//
-//			//check if the gene is already in the chromosome
-//			for (Gene gene : genes)
-//				if (startNode == gene.from && endNode == gene.to)
-//					foundPair = false;
-//
-//			//if we found a pair to match, exit loop
-//			if (foundPair)
-//				break;
-//		}
-//
-//		if (!foundPair) //break if can't find suitable pair
-//			return;
-//
-//		System.out.println("Mutating new link between node " + startNode + " and node " + endNode);
-//		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
-//		if (linkID == null) { //link does not exist yet
-//			//check if link fits our easy restriction
-//			//Probable optimization: Perform DFS from end node to start node to check for links
-//			//Problems: List of edges (Genes) is stored in a list and there is no way to know the list of
-//			//edges from 1 node to another other than going through the list.
-//			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
-//				System.out.println("Link between nodes do not exist yet, creating new link");
-//				linkID = Globals.getInnovationId();
-//				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
-//			} else {
-//				System.out.println("Link is not valid, breaking out");
-//				return;
-//			}
-//		}
-//		genes.add(new Gene(linkID, startNode, endNode, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
+	    // Get a list of neurons present in this chromosome
+	    Set<Integer> presentNeuronsSet = new TreeSet<>();
+	    for (Gene g: genes) {
+            presentNeuronsSet.add(g.from);
+            presentNeuronsSet.add(g.to);
+        }
+        List<Integer> presentNeuronsList = new ArrayList<>(presentNeuronsSet);
+
+	    // Attempt to get 2 neurons that fulfills all requriements
+	    for (int i=0; i<10; i++) {
+	        // Get 2 neurons
+	        from = presentNeuronsList.get((new Random()).nextInt(presentNeuronsList.size()));
+            to = presentNeuronsList.get((new Random()).nextInt(presentNeuronsList.size()));
+            // Check if the neurons are the same
+            if (from == to)
+                continue;
+            // Check if the neurons are 2 inputs
+            if (from <= NeuralNet.OUTPUT_START_INDEX && to <= NeuralNet.OUTPUT_START_INDEX)
+                continue;
+            // Check if the neurons are 2 outputs
+            if (from > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX &&
+                    to > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)
+                continue;
+            // Check if a link already exists
+            for (Gene g: genes) {
+                if ((g.from == from && g.to == to) ||
+                        (g.from == to && g.to == from)) {
+                    isExist = true;
+                }
+            }
+            if (isExist)
+                continue;
+            // If 2 neurons are hidden, perform DFS to determine from and to
+            if (to > NeuralNet.HIDDEN_START_INDEX && from > NeuralNet.HIDDEN_START_INDEX) {
+                // TODO: DFS
+            }
+
+            // Else, make sure input neuron is from or output neuron is to
+            else if (to <= NeuralNet.OUTPUT_START_INDEX ||
+                    (from > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)) {
+                int temp = from;
+                from = to;
+                to = temp;
+            }
+
+            Gene newGene = pop.getInnovator().innovateLink(from, to);
+            genes.add(newGene);
+            break;
+        }
 	}
 
 	/**
@@ -719,11 +728,11 @@ class Chromosome implements Comparable<Chromosome> {
 	 * can mutate a currently disabled node
 	 */
 	public void mutateNode() {
-	    LOGGER.info(String.format("C%d has %d genes", id, genes.size()));
 	    Gene chosenGene = genes.get((new Random()).nextInt(genes.size()));
 	    chosenGene.isEnabled = false;
         Gene[] newGenes = pop.getInnovator().innovateNode(chosenGene.from, chosenGene.to, chosenGene.weight);
         genes.addAll(Arrays.asList(newGenes));
+        neuronCount = Math.max(newGenes[0].to, neuronCount);
         LOGGER.finest(String.format("Creating new node N%d between N%d and N%d",
                 newGenes[0].to, chosenGene.from, chosenGene.to));
 	}

@@ -1129,12 +1129,12 @@ class TetrisExperiment extends Experiment {
     public TetrisExperiment() {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
-        this.params.GENERATION_LIMIT = 100;
+        this.params.GENERATION_LIMIT = 300;
         this.params.POPULATION_SIZE = 100;
-        this.params.FITNESS_EVALUATIONS = 10;
+        this.params.FITNESS_EVALUATIONS = 20;
         this.params.COMPATIBILITY_THRESHOLD = 0.1;
-        this.params.TARGET_SPECIES = 20;
-        this.params.COMPAT_MOD = 0.05;
+        this.params.TARGET_SPECIES = 10;
+        this.params.COMPAT_MOD = 0.03;
         super.setup();
     }
 

@@ -635,6 +635,7 @@ class Chromosome implements Comparable<Chromosome> {
 	 * Chromosome can gain a new node or link
      * Requires a reevaluation of fitness
 	 */
+	// TODO Change to weighted mutation, only 1 type of mutation is allowed
 	public Chromosome mutate() {
 	    LOGGER.finest(String.format("Mutating C%d", this.id));
 		if (Math.random() < LINK_MUTATION_CHANCE)
@@ -653,6 +654,8 @@ class Chromosome implements Comparable<Chromosome> {
 	 * TODO: refine with bellman's ford instead
 	 */
 	public void mutateLink() {
+	    int from, to;
+
 //		int startNode = -1;
 //		int endNode = -1;
 //		boolean foundPair = false;
@@ -752,6 +755,7 @@ class Chromosome implements Comparable<Chromosome> {
      * @param other Chromosome to compare with
      * @return Number of same, excess and disjoint genes
      */
+    // TODO Confirm if same occurs after disjoint and rewrite if necessary
 	public int[] calculateStructuralDifferences(Chromosome other) {
 	    int[] structuralDiff = new int[3];
         Collections.sort(this.genes);
@@ -1264,6 +1268,7 @@ class Population {
                 createDefaultChromosome(chromosomeBlueprintCreator.get()));
         this.evaluateFitness();
         this.allocateChromosomesToSpecies();
+		this.allocateOffsprings();
     }
 
     /**
@@ -1304,8 +1309,10 @@ class Population {
 
     /**
      * Advance the population to the next generation
-     * Precondition: All chromosomes must have been evaluated for fitness and separated into species
-     * Postcondition: A new generation with all chromosomes evaluated for fitness and separated
+     * Precondition: All chromosomes must have been evaluated for fitness and separated into species,
+	 * and offsprings allocated
+     * Postcondition: A new generation with all chromosomes evaluated for fitness and separated,
+	 * and offsprings allocated
      * into species
      */
     public void advance() {

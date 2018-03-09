@@ -275,6 +275,8 @@ class Species {
 	 */
 	public List<Chromosome> produceAllocatedOffsprings() {
 		List<Chromosome> newChildren = new ArrayList<>();
+		if (chromosomes.isEmpty())
+		    return newChildren;
 		newChildren.add(Collections.max(chromosomes)); // Add species champion
 		Chromosome parent1, parent2;
 		while(newChildren.size() < allocatedOffsprings) {
@@ -309,7 +311,9 @@ class Species {
      * @return A random chromosome from this species
      */
 	public Chromosome getRandomChromosome() {
-	    return chromosomes.get((new Random()).nextInt(chromosomes.size()));
+	    if (chromosomes.size() == 0)
+	        return null;
+        return chromosomes.get((new Random()).nextInt(chromosomes.size()));
     }
 
     /**
@@ -363,7 +367,8 @@ class NeuralNet {
 	 */
 	public NeuralNet(Chromosome chromosome) {
 		this.chromosome = chromosome;
-
+        LOGGER.fine(String.format("Creating neural network for C%d of size %d",
+                chromosome.getId(), chromosome.getNeuronCount()));
 		// Create Neurons
 		neurons = new ArrayList<>();
         neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
@@ -621,6 +626,7 @@ class Chromosome implements Comparable<Chromosome> {
             for (int i=structuralDifferences[SAME]; i<other.genes.size(); i++) {
                 child.genes.add(new Gene(other.genes.get(i)));
             }
+            child.neuronCount = Math.max(child.neuronCount, other.neuronCount);
         }
 
 		// Mutate child
@@ -689,11 +695,11 @@ class Chromosome implements Comparable<Chromosome> {
             if (from == to)
                 continue;
             // Check if the neurons are 2 inputs
-            if (from <= NeuralNet.OUTPUT_START_INDEX && to <= NeuralNet.OUTPUT_START_INDEX)
+            if (from < NeuralNet.OUTPUT_START_INDEX && to < NeuralNet.OUTPUT_START_INDEX)
                 continue;
             // Check if the neurons are 2 outputs
-            if (from > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX &&
-                    to > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)
+            if (from >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX &&
+                    to >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)
                 continue;
             // Check if a link already exists
             for (Gene g: genes) {
@@ -705,7 +711,7 @@ class Chromosome implements Comparable<Chromosome> {
             if (isExist)
                 continue;
             // If 2 neurons are hidden, perform DFS to determine from and to
-            if (to > NeuralNet.HIDDEN_START_INDEX && from > NeuralNet.HIDDEN_START_INDEX) {
+            if (to >= NeuralNet.HIDDEN_START_INDEX && from >= NeuralNet.HIDDEN_START_INDEX) {
                 if (!dfs(from, to)) {
                     int temp = from;
                     from = to;
@@ -714,8 +720,8 @@ class Chromosome implements Comparable<Chromosome> {
             }
 
             // Else, make sure input neuron is from or output neuron is to
-            else if (to <= NeuralNet.OUTPUT_START_INDEX ||
-                    (from > NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)) {
+            else if (to < NeuralNet.OUTPUT_START_INDEX ||
+                    (from >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)) {
                 int temp = from;
                 from = to;
                 to = temp;
@@ -737,7 +743,7 @@ class Chromosome implements Comparable<Chromosome> {
 	    chosenGene.isEnabled = false;
         Gene[] newGenes = pop.getInnovator().innovateNode(chosenGene.from, chosenGene.to, chosenGene.weight);
         genes.addAll(Arrays.asList(newGenes));
-        neuronCount = Math.max(newGenes[0].to, neuronCount);
+        neuronCount = Math.max(newGenes[0].to+1, neuronCount);
         LOGGER.finest(String.format("Creating new node N%d between N%d and N%d",
                 newGenes[0].to, chosenGene.from, chosenGene.to));
 	}
@@ -1453,7 +1459,11 @@ class Population {
      * @return A random chromosome from a random species
      */
     public Chromosome getRandomChromosomeFromSpecies() {
-        return species.get((new Random().nextInt(species.size()))).getRandomChromosome();
+        Chromosome rand = null;
+        while (rand == null) {
+            rand = species.get((new Random().nextInt(species.size()))).getRandomChromosome();
+        }
+        return rand;
     }
 
     public Innovator getInnovator() {

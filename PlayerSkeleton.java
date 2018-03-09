@@ -638,11 +638,27 @@ class Chromosome implements Comparable<Chromosome> {
 	// TODO Change to weighted mutation, only 1 type of mutation is allowed
 	public Chromosome mutate() {
 	    LOGGER.finest(String.format("Mutating C%d", this.id));
-		if (Math.random() < LINK_MUTATION_CHANCE)
-			mutateLink();
-		if (Math.random() < NODE_MUTATION_CHANCE)
-			mutateNode();
-		this.fitness = -1;
+	    double randomNumber = Math.random();
+	    this.fitness = -1;
+
+		if (randomNumber < LINK_MUTATION_CHANCE) {
+            mutateLink();
+            return this;
+        }
+		randomNumber -= LINK_MUTATION_CHANCE;
+		if (randomNumber  < NODE_MUTATION_CHANCE) {
+            mutateNode();
+            return this;
+        }
+        randomNumber -= NODE_MUTATION_CHANCE;
+		if (randomNumber < WEIGHT_MUTATION_CHANCE)
+        {
+            genes.get((int)Math.floor(Math.random() * genes.size())).mutateWeight();
+            mutateGeneWeight();
+            return this;
+        }
+        randomNumber -= WEIGHT_MUTATION_CHANCE;
+
 		return this;
 	}
 

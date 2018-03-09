@@ -670,40 +670,47 @@ class Chromosome implements Comparable<Chromosome> {
      */
 	public int[] calculateStructuralDifferences(Chromosome other) {
 	    int[] structuralDiff = new int[3];
-        Collections.sort(this.genes);
+	    // Sort both genes list
+	    Collections.sort(this.genes);
         Collections.sort(other.genes);
-        // Get number of same genes
-        Iterator<Gene> thisIt = this.genes.iterator();
-        Iterator<Gene> otherIt = other.genes.iterator();
-        while (thisIt.hasNext() && otherIt.hasNext()) {
-            if(thisIt.next().id == otherIt.next().id)
-                structuralDiff[SAME]++;
-            else
-                break;
-        }
+
         // Get number of excess genes
         int thisMaxId = Collections.max(this.genes).id;
         int otherMaxId = Collections.max(other.genes).id;
-        // There are no excess and disjoint
-        if (thisMaxId == otherMaxId)
-            return structuralDiff;
+        // Get the smaller highest gene id
         int minMaxId = Math.min(thisMaxId, otherMaxId);
-        // Compute excess genes
-        ListIterator<Gene> listIt;
-        if (thisMaxId > otherMaxId) {
-            listIt = this.genes.listIterator(this.genes.size());
-        } else {
-            listIt = other.genes.listIterator(other.genes.size());
+        // There are excess genes, compute number
+        if (thisMaxId != otherMaxId) {
+            ListIterator<Gene> listIt;
+            if (thisMaxId > otherMaxId) {
+                listIt = this.genes.listIterator(this.genes.size());
+            } else {
+                listIt = other.genes.listIterator(other.genes.size());
+            }
+            while (listIt.previous().id > minMaxId) {
+                structuralDiff[EXCESS]++;
+            }
         }
-        while (listIt.previous().id > minMaxId) {
-            structuralDiff[EXCESS]++;
-        }
-        // Compute disjoint genes
-        while (thisIt.hasNext() && thisIt.next().id <= minMaxId)
-            structuralDiff[DISJOINT]++;
-        while (otherIt.hasNext() && otherIt.next().id <= minMaxId)
-            structuralDiff[DISJOINT]++;
 
+        // Compute number of same and disjoint genes
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene thisGene = thisIt.next();
+        Gene otherGene = otherIt.next();
+        while (thisGene != null && thisGene.id <= minMaxId &&
+                otherGene != null && otherGene.id <= minMaxId) {
+            if (thisGene.id == otherGene.id) {
+                structuralDiff[SAME]++;
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id > otherGene.id) {
+                structuralDiff[DISJOINT]++;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id < otherGene.id) {
+                structuralDiff[DISJOINT]++;
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+            }
+        }
         return structuralDiff;
     }
 

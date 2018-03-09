@@ -1,8 +1,11 @@
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.logging.Logger;
 import java.lang.StringBuilder;
 
 public class PlayerSkeleton {
+    private static final Logger LOGGER = Logger.getLogger( PlayerSkeleton.class.getName() );
 	static boolean HEADLESS = false;
 	static boolean EVOLVE = false;
 
@@ -21,254 +24,377 @@ public class PlayerSkeleton {
 	}
 
 	public PlayerSkeleton() {
-		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		if (EVOLVE) {
+        Experiment ex = new TetrisExperiment();
+        ex.run();
+        Chromosome fittest = ex.getFittest();
+        if (ex instanceof TetrisExperiment) {
+            State s = new State();
+            NeuralNet nn = new NeuralNet(fittest);
 
-			// populate chromosomes
-			List<Chromosome> population = new ArrayList<Chromosome>();
-			for (int i=0; i<Params.POPULATION_SIZE; i++){
-				population.add(Chromosome.createDefaultChromosome());
-			}
+            if (!HEADLESS)
+                new TFrame(s);
+            while (!s.hasLost()) {
+                nn.activate(StateUtils.normalize(s));
+                List<Double> output = nn.getOutput();
 
-			// mutate population
-			for (Chromosome chromosome : population)
-				chromosome.mutate();
+                // DEUBG: Output output weights
+                // for (double d: output)
+                // 	System.out.format("%.3f ", d);
+                // System.out.format("%n");
 
-			List<Species> speciesList = new ArrayList<Species>();
-			for (Chromosome chromosome : population)
-				findSpecies(chromosome, speciesList);
+                int orient = StateUtils.getOrient(s, output);
+                int slot = StateUtils.getSlot(s, orient, output);
+                if (slot == -1) {
+                    s.lost = true;
+                    continue;
+                }
 
-			//run NEAT
-			Chromosome fittestChromosome = population.get(0);
-			List<Chromosome> newChildren;
-			double highestFitness = -1;
-			int currentStagnation = 0;
-			double totalSpeciesFitness;
-			for (int i = 0; i < Params.GENERATION_LIMIT; i++) {
-				System.out.println("Current generation: " + i);
-				//evaluate fitness of chromosomes
-				//double fitness;
-				forkJoinPool.invoke(
-						new EvaluatePopulationFitnessTask(population));
-				//fitness = forkJoinPool.invoke(
-				//	new EvaluateChromosomeFitnessTask(Chromosome.createDefaultChromosome()));
-				for (Chromosome chromosome : population)
-					System.out.println("Chromosome #: " + chromosome.id + ", fitness: " + chromosome.fitness);
+                s.makeMove(orient, slot);
 
-				//update fitness and check stagnation
-				updateFittest(population, fittestChromosome);
-				if (highestFitness < fittestChromosome.fitness) {
-					highestFitness = fittestChromosome.fitness;
-					currentStagnation = 0;
-				} else {
-					currentStagnation++;
-				}
-				//if fitness limit reached, break
-				if (fittestChromosome.fitness > Params.FITNESS_LIMIT)
-					break;
+                if (!HEADLESS) {
+                    s.draw();
+                    s.drawNext(0, 0);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            LOGGER.info(String.format("%d rows cleared", s.getRowsCleared()));
+        }
+    }
 
+//	public PlayerSkeleton() {
+//		ForkJoinPool forkJoinPool = new ForkJoinPool();
+//		if (EVOLVE) {
+//
+//			// populate chromosomes
+//			List<Chromosome> population = new ArrayList<Chromosome>();
+//			for (int i=0; i<Params.POPULATION_SIZE; i++){
+//				population.add(Chromosome.createDefaultChromosome());
+//			}
+//
+//			// mutate population
+//			for (Chromosome chromosome : population)
+//				chromosome.mutate();
+//
+//			List<Species> speciesList = new ArrayList<Species>();
+//			for (Chromosome chromosome : population)
+//				findSpecies(chromosome, speciesList);
+//
+//			//run NEAT
+//			Chromosome fittestChromosome = population.get(0);
+//			List<Chromosome> newChildren;
+//			double highestFitness = -1;
+//			int currentStagnation = 0;
+//			double totalSpeciesFitness;
+//			for (int i = 0; i < Params.GENERATION_LIMIT; i++) {
+//				System.out.println("Current generation: " + i);
+//				//evaluate fitness of chromosomes
+//				//double fitness;
+//				forkJoinPool.invoke(
+//						new EvaluatePopulationFitnessTask(population));
+//				//fitness = forkJoinPool.invoke(
+//				//	new EvaluateChromosomeFitnessTask(Chromosome.createDefaultChromosome()));
+//				for (Chromosome chromosome : population)
+//					System.out.println("Chromosome #: " + chromosome.id + ", fitness: " + chromosome.fitness);
+//
+//				//update fitness and check stagnation
+//				updateFittest(population, fittestChromosome);
+//				if (highestFitness < fittestChromosome.fitness) {
+//					highestFitness = fittestChromosome.fitness;
+//					currentStagnation = 0;
+//				} else {
+//					currentStagnation++;
+//				}
+//				//if fitness limit reached, break
+//				if (fittestChromosome.fitness > Params.FITNESS_LIMIT)
+//					break;
+//
+//
+//				// breed new generation
+//				newChildren = new ArrayList<Chromosome>();
+//				totalSpeciesFitness = 0;
+//				for (Species species : speciesList) {
+//					totalSpeciesFitness += species.computeAverageFitness();
+//				}
+//				// check for stagnation
+//				System.out.println("Current Stagnation: " + currentStagnation);
+//				if (currentStagnation >= Params.MAXIMUM_STAGNATION || totalSpeciesFitness == 0) { //wipe out everyone by ignoring them
+//					System.out.println("stagnating population. culling");
+//					currentStagnation = 0;
+//					Collections.sort(population);
+//					Chromosome chromosome;
+//					for (int j=0; j<Params.POPULATION_SIZE; j++) {
+//						chromosome = population.get(0).breedWith(population.get(1)); //breed only the fittest 2 chromosomes
+//						newChildren.add(chromosome);
+//					}
+//				}
+//				else { //do not wipe out everyone
+//
+//					// cull underperformers in each species
+//					for (Species species : speciesList)
+//						species.cull(population);
+//
+//					//breed in all species
+//					int numberOfChildren;
+//					List<Chromosome> speciesChildren;
+//					for (Species species : speciesList) {
+//						numberOfChildren = (int)Math.ceil(Params.POPULATION_SIZE*species.averageFitness/totalSpeciesFitness);
+//						speciesChildren = species.breed(numberOfChildren, population);
+//						newChildren.addAll(speciesChildren);
+//					}
+//				}
+//
+//				// mutate new children and sort them into species
+//				speciesList = new ArrayList<Species>();
+//				for (Chromosome chromosome : newChildren) {
+//					chromosome.mutate();
+//					findSpecies(chromosome, speciesList);
+//				}
+//
+//				population = new ArrayList<Chromosome>();
+//				population.addAll(newChildren);
+//			}
+//
+//			forkJoinPool.invoke(
+//					new EvaluatePopulationFitnessTask(population));
+//
+//			Collections.sort(population);
+//			FittestChromosome fc = new FittestChromosome(population.get(0));
+//			System.out.println("Best fitness: " + population.get(0).fitness);
+//			return;
+//		}
+//
+//		State s = new State();
+//		NeuralNet nn = new NeuralNet(Chromosome.createDefaultChromosome());
+//
+//		if (!HEADLESS)
+//			new TFrame(s);
+//		while(!s.hasLost()) {
+//			nn.activate(StateUtils.normalize(s));
+//			List<Double> output = nn.getOutput();
+//
+//			// DEUBG: Output output weights
+//			// for (double d: output)
+//			// 	System.out.format("%.3f ", d);
+//			// System.out.format("%n");
+//
+//			int orient = StateUtils.getOrient(s, output);
+//			int slot = StateUtils.getSlot(s, orient, output);
+//			if (slot == -1) {
+//				s.lost = true;
+//				continue;
+//			}
+//
+//			s.makeMove(orient, slot);
+//
+//			if (!HEADLESS) {
+//				s.draw();
+//				s.drawNext(0,0);
+//				try {
+//					Thread.sleep(300);
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}
+//		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
+//	}
 
-				// breed new generation
-				newChildren = new ArrayList<Chromosome>();
-				totalSpeciesFitness = 0;
-				for (Species species : speciesList) {
-					totalSpeciesFitness += species.computeAverageFitness();
-				}
-				// check for stagnation
-				System.out.println("Current Stagnation: " + currentStagnation);
-				if (currentStagnation >= Params.MAXIMUM_STAGNATION || totalSpeciesFitness == 0) { //wipe out everyone by ignoring them
-					System.out.println("stagnating population. culling");
-					currentStagnation = 0;
-					Collections.sort(population);
-					Chromosome chromosome;
-					for (int j=0; j<Params.POPULATION_SIZE; j++) {
-						chromosome = population.get(0).breedWith(population.get(1)); //breed only the fittest 2 chromosomes
-						newChildren.add(chromosome);
-					}
-				}
-				else { //do not wipe out everyone
-
-					// cull underperformers in each species
-					for (Species species : speciesList)
-						species.cull(population);
-
-					//breed in all species
-					int numberOfChildren;
-					List<Chromosome> speciesChildren;
-					for (Species species : speciesList) {
-						numberOfChildren = (int)Math.ceil(Params.POPULATION_SIZE*species.averageFitness/totalSpeciesFitness);
-						speciesChildren = species.breed(numberOfChildren, population);
-						newChildren.addAll(speciesChildren);
-					}
-				}
-
-				// mutate new children and sort them into species
-				speciesList = new ArrayList<Species>();
-				for (Chromosome chromosome : newChildren) {
-					chromosome.mutate();
-					findSpecies(chromosome, speciesList);
-				}
-
-				population = new ArrayList<Chromosome>();
-				population.addAll(newChildren);
-			}
-
-			forkJoinPool.invoke(
-					new EvaluatePopulationFitnessTask(population));
-
-			Collections.sort(population);
-			FittestChromosome fc = new FittestChromosome(population.get(0));
-			// TODO do something with fittest chromosome
-			System.out.println("Best fitness: " + population.get(0).fitness);
-			return;
-		}
-
-		State s = new State();
-		NeuralNet nn = new NeuralNet(Chromosome.createDefaultChromosome());
-
-		if (!HEADLESS)
-			new TFrame(s);
-		while(!s.hasLost()) {
-			nn.activate(StateUtils.normalize(s));
-			List<Double> output = nn.getOutput();
-			
-			// DEUBG: Output output weights
-			// for (double d: output)
-			// 	System.out.format("%.3f ", d);
-			// System.out.format("%n");
-
-			int orient = StateUtils.getOrient(s, output);
-			int slot = StateUtils.getSlot(s, orient, output);
-			if (slot == -1) {
-				s.lost = true;
-				continue;
-			}
-
-			s.makeMove(orient, slot);
-
-			if (!HEADLESS) {
-				s.draw();
-				s.drawNext(0,0);
-				try {
-					Thread.sleep(300);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
-	}
-
-	/**
-	 * checks the current chromosome and adds it to a species list
-	 * @param chromosome - chromosome to be added to a species list
-	 */
-	public void findSpecies(Chromosome chromosome, List<Species> speciesList) {
-		for (Species species : speciesList) {
-			if (chromosome.computeGeneDistance(species.representative) < Params.COMPATIBILITY_THRESHOLD) {
-				species.speciesPopulation.add(chromosome);
-				//System.out.println("chromosome added to species");
-				return;
-			}
-		}
-		//did not fit into any species, creating new species
-		speciesList.add(new Species(chromosome));
-		//System.out.println("chromosome created new species");
-	}
-
-	/**
-	 * updates current best chromosome to the one with best fitness
-	 * @param population - list of all current chromosomes with updated fitness
-	 * @param fittestChromosome - current best chromosome
-	 */
-	public void updateFittest(List<Chromosome> population, Chromosome fittestChromosome){
-		for (Chromosome chromosome : population) {
-			if (fittestChromosome.fitness < chromosome.fitness)
-				fittestChromosome = chromosome;
-		}
-	}
-
-	//implement this function to have a working system
-	public int pickMove(State s, int[][] legalMoves) {
-		return 0;
-	}
+//	/**
+//	 * checks the current chromosome and adds it to a species list
+//	 * @param chromosome - chromosome to be added to a species list
+//	 */
+//	public void findSpecies(Chromosome chromosome, List<Species> speciesList) {
+//		for (Species species : speciesList) {
+//			if (chromosome.computeGeneDistance(species.representative) < COMPATIBILITY_THRESHOLD) {
+//				species.chromosomes.add(chromosome);
+//				//System.out.println("chromosome added to species");
+//				return;
+//			}
+//		}
+//		//did not fit into any species, creating new species
+//		speciesList.add(new Species(chromosome));
+//		//System.out.println("chromosome created new species");
+//	}
+//
+//	/**
+//	 * updates current best chromosome to the one with best fitness
+//	 * @param population - list of all current chromosomes with updated fitness
+//	 * @param fittestChromosome - current best chromosome
+//	 */
+//	public void updateFittest(List<Chromosome> population, Chromosome fittestChromosome){
+//		for (Chromosome chromosome : population) {
+//			if (fittestChromosome.getFitness() < chromosome.getFitness())
+//				fittestChromosome = chromosome;
+//		}
+//	}
+//
+//	//implement this function to have a working system
+//	public int pickMove(State s, int[][] legalMoves) {
+//		return 0;
+//	}
 }
 
 class Species {
-	public Chromosome representative;
-	public List<Chromosome> speciesPopulation;
-	public double averageFitness;
-	public int speciesID;
+    public static double CROSSOVER_CHANCE;
+    public static double COMPATIBILITY_THRESHOLD;
+    public static double SURVIVAL_THRESHOLD;
+    private Population pop;
+	private Chromosome representative;
+	private List<Chromosome> chromosomes;
+	private int stagnation;
+	private double bestFitness;
+	private double averageFitness;
+	private double allocatedOffsprings;
+	private int id;
 
-	public Species(Chromosome representative){
-		speciesPopulation = new ArrayList<Chromosome>();
+    /**
+     * @param pop The population the species belong to
+     * @param representative The species representative
+     */
+	public Species(Population pop, Chromosome representative){
+	    this.pop = pop;
+		this.chromosomes = new ArrayList<>();
 		this.representative = representative;
-		speciesPopulation.add(representative);
-		speciesID = Globals.getSpeciesId();
+		this.chromosomes.add(representative);
+		this.id = pop.getNewSpeciesId();
+		this.stagnation = 0;
+		this.averageFitness = -1;
+		this.allocatedOffsprings = -1;
 	}
 
 	/**
-	 * aggressively removes weaklings from the population
+	 * Slaughter chromosomes below survival threshold
 	 */
-	public void cull(List<Chromosome> population) {
-		Collections.sort(speciesPopulation);
-		int limit = (int)Math.ceil(speciesPopulation.size() * Params.SURVIVAL_THRESHOLD);
-		speciesPopulation = speciesPopulation.subList(0, limit);
-		for (int i=limit; i< speciesPopulation.size(); i++) {
-			population.remove(speciesPopulation.get(i));
-		}
+	public void cull() {
+		Collections.sort(chromosomes, Collections.reverseOrder());
+		int limit = (int) Math.ceil(chromosomes.size() * SURVIVAL_THRESHOLD);
+		chromosomes = chromosomes.subList(0, limit);
 	}
+
+    /**
+     * Clear all chromosomes from the species and other variables
+     */
+	public void clear() {
+        chromosomes.clear();
+        averageFitness = -1;
+        allocatedOffsprings = -1;
+    }
+
+    /**
+     * @return No. of chomosomes in the species
+     */
+	public int size() {
+	    return chromosomes.size();
+    }
 
 	/**
 	 *
 	 * @return returns the average fitness of the chromosomes in the species
 	 */
 	public double computeAverageFitness() {
-		if (speciesPopulation.size() == 0)
-			return 0;
-		double totalFitness = 0;
-		for (Chromosome chromosome : speciesPopulation)
-			totalFitness += chromosome.fitness;
-		System.out.println("Species ID: " + speciesID + ", PopSize : " + speciesPopulation.size() + ", AverageFitness = " + totalFitness/speciesPopulation.size());
-		averageFitness = totalFitness/speciesPopulation.size();
-		return averageFitness;
+		if (chromosomes.size() == 0)
+			return averageFitness = 0;
+		return averageFitness = chromosomes.stream()
+                .mapToDouble(Chromosome::getFitness)
+                .sum() / chromosomes.size();
 	}
 
 	/**
-	 * creates baby chromosomes equal to the amount requested
+	 * creates baby chromosomes equal to the amount allocated
 	 * if there is only 1 parent, it will always crossbreed
 	 * otherwise, it will always breed with a different parent
-	 * @param numberOfChildren - number of chromosomes to populate return with
-	 * @param population - in case of cross-breeding
 	 * @return returns a list of new baby chromosomes
 	 */
-	public List<Chromosome> breed(int numberOfChildren, List<Chromosome> population) {
-		List<Chromosome> newChildren = new ArrayList<Chromosome>();
-		System.out.println("Species ID: " + speciesID + " breeding " + numberOfChildren + " new children.");
+	public List<Chromosome> produceAllocatedOffsprings() {
+		List<Chromosome> newChildren = new ArrayList<>();
+		if (chromosomes.isEmpty())
+		    return newChildren;
+		newChildren.add(Collections.max(chromosomes)); // Add species champion
 		Chromosome parent1, parent2;
-		for (int i=0; i<numberOfChildren; i++) {
-			parent1 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
-			parent2 = parent1;
-			if (Math.random() < Params.CROSSOVER_CHANCE || speciesPopulation.size() == 1) {//crossbreed with anything in pop
-				while (parent1 == parent2)
-					parent2 = population.get((int)Math.floor(Math.random() * population.size()));
-			}
-			else { //not crossbreed
-				while (parent1 == parent2)
-					parent2 = speciesPopulation.get((int)Math.floor(Math.random() * speciesPopulation.size()));
-			}
+		while(newChildren.size() < allocatedOffsprings) {
+			parent1 = getRandomChromosome();
+			if (Math.random() < CROSSOVER_CHANCE)
+                parent2 = pop.getRandomChromosomeFromSpecies();
+			else
+			    parent2 = getRandomChromosome();
 			newChildren.add(parent1.breedWith(parent2));
 		}
 		return newChildren;
 	}
+
+    /**
+     * Check if chromosome is compatible with this species
+     * @param c Chromosome to check
+     * @return True if compatible, False otherwise
+     */
+	public boolean compatibleWith(Chromosome c) {
+        return representative.distanceFrom(c) < COMPATIBILITY_THRESHOLD;
+    }
+
+    /**
+     * Add specified chromsome to the species
+     * @param c Chromosome to add
+     */
+    public void add(Chromosome c) {
+	    chromosomes.add(c);
+    }
+
+    /**
+     * @return A random chromosome from this species
+     */
+	public Chromosome getRandomChromosome() {
+	    if (chromosomes.size() == 0)
+	        return null;
+        return chromosomes.get((new Random()).nextInt(chromosomes.size()));
+    }
+
+    /**
+     * Confirm that all chromosomes have been added and
+     * perform relevant computations
+     */
+    public void confirmSpecies() {
+        // Check for fitness improvement
+        double newBestFitness = Collections.max(chromosomes).getFitness();
+        if (bestFitness > newBestFitness) {
+            stagnation++;
+        } else {
+            bestFitness = newBestFitness;
+            stagnation = 0;
+        }
+        // Compute average fitness
+        averageFitness = computeAverageFitness();
+    }
+
+    public double getAverageFitness() {
+        return averageFitness;
+    }
+
+    public void setAllocatedOffsprings(int allocatedOffsprings) {
+        this.allocatedOffsprings = allocatedOffsprings;
+    }
+
+    public int getId() {
+        return id;
+    }
 }
 
 // Feed-forward neural network
 // Neurons are arranged in the List from Input, Output and Hidden
 class NeuralNet {
-	public List<Neuron> neurons;
-	public Chromosome chromosome;
-	
+    private static final Logger LOGGER = Logger.getLogger( NeuralNet.class.getName() );
+    public static int INPUT_SIZE;
+    public static int OUTPUT_SIZE;
+    public static int BIAS_START_INDEX;
+    public static int INPUT_START_INDEX;
+    public static int OUTPUT_START_INDEX;
+    public static int HIDDEN_START_INDEX;
+	private List<Neuron> neurons;
+    private Chromosome chromosome;
+
 	/**
 	 * A neural net built based on a specific chromosome data.
 	 * Call activate() to pass in the input and then getOuput() later.
@@ -277,47 +403,21 @@ class NeuralNet {
 	 */
 	public NeuralNet(Chromosome chromosome) {
 		this.chromosome = chromosome;
-
-		// DEBUG: Prints the chromosome on creation
-		// for (Gene g: chromosome.genes) {
-		// 	System.out.printf("ID: %d, From: %d, To: %d%n", g.id, g.from, g.to);
-		// }
-
+        LOGGER.fine(String.format("Creating neural network for C%d of size %d",
+                chromosome.getId(), chromosome.getNeuronCount()));
 		// Create Neurons
-		neurons = new ArrayList<Neuron>();
-
-		for (int i=0; i<chromosome.neuronCount+1; i++)
-			neurons.add(new Neuron());
+		neurons = new ArrayList<>();
+        neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
+        for (int i=0; i<INPUT_SIZE; i++)
+            neurons.add(new Neuron(ActivationType.LINEAR)); // Input Neurons
+        for (int i=0; i<chromosome.getNeuronCount()-INPUT_SIZE-1; i++)
+            neurons.add(new Neuron(ActivationType.SIGMOID)); // Output and Hidden Neurons
 
 		// Insert links
-		Neuron n;
-		for (Gene g: chromosome.genes) {
-			if(g.isEnabled) {
-				n = neurons.get(g.to);
-				n.incomingNeurons.add(neurons.get(g.from));
-				n.incomingWeights.add(g.weight);
+		for (Gene g: chromosome.getGenes()) {
+			if (g.isEnabled) {
+				neurons.get(g.to).addLink(neurons.get(g.from), g.weight);
 			}
-		}
-
-		// Setup Bias Neuron
-		neurons.get(0).type = ActivationType.BIAS;
-		neurons.get(0).isActive = true;
-		
-		// Setup Input Neurons
-		for (int i=Params.INPUT_START_INDEX; i<Params.OUTPUT_START_INDEX; i++) {
-			n = neurons.get(i);
-			n.type = ActivationType.LINEAR;
-			n.isActive = true;
-		}
-
-		// Setup Output Neurons
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			neurons.get(i).type = ActivationType.SIGMOID;
-		}
-
-		// Setup Hidden Neurons
-		for (int i=Params.HIDDEN_START_INDEX; i<neurons.size(); i++) {
-			neurons.get(i).type = ActivationType.SIGMOID;
 		}
 	}
 	
@@ -325,29 +425,31 @@ class NeuralNet {
 	 * Places these inputs into the neural net input neurons.
 	 *
 	 * @param inputs The list of inputs from the screen and the current piece.
-	 * @return True if successful, false otherwise.
+	 * @return The list of outputs, null if unsuccessful
 	 */
-	public boolean activate(List<Double> inputs) {
+	public List<Double> activate(List<Double> inputs) {
 		// Check input size
-		if (inputs.size() != Params.INPUT_SIZE) {
-			System.out.println("Input size mismatch!");
-			return false;
+		if (inputs.size() != INPUT_SIZE) {
+			LOGGER.warning("Input size mismatch!");
+			return null;
 		}
 
 		// Clear the network
 		reset();
 
 		// Set Input Neurons
-		for (int i=0; i<Params.INPUT_SIZE; i++) {
-			neurons.get(Params.INPUT_START_INDEX+i).value = inputs.get(i);
+		for (int i=0; i<INPUT_SIZE; i++) {
+			neurons.get(i).setValue(inputs.get(i));
 		}
 
 		// Activate Output Neurons
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
-			neurons.get(i).activate();
+        List<Double> output = new ArrayList<>();
+		for (int i=OUTPUT_START_INDEX; i<HIDDEN_START_INDEX; i++) {
+			output.add(neurons.get(i).getValue());
 		}
 
-		return true;
+		// Return output
+        return output;
 	}
 	
 	/**
@@ -358,62 +460,99 @@ class NeuralNet {
 	 */
 	public List<Double> getOutput() {
 		List<Double> output = new ArrayList<Double>();
-		for (int i=Params.OUTPUT_START_INDEX; i<Params.HIDDEN_START_INDEX; i++) {
+		for (int i=OUTPUT_START_INDEX; i<HIDDEN_START_INDEX; i++) {
 			output.add(neurons.get(i).value);
 		}
 		return output;
 	}
 
 	public void reset() {
-		for (int i=Params.OUTPUT_START_INDEX; i<neurons.size(); i++) {
-			neurons.get(i).isActive = false;
-		}
+		for (int i=OUTPUT_START_INDEX; i<neurons.size(); i++)
+			neurons.get(i).reset();
 	}
-}
 
-/**
- * Neuron refers to a specific node, be in input, output, hidden or bias. 
- * This stores information about the node, incoming neurons and their weights.
- */
-class Neuron {
-	public List<Neuron> incomingNeurons;
-	public List<Double> incomingWeights;
-	public ActivationType type;
-	public double value;
-	public boolean isActive;
+    /**
+     * Neuron refers to a specific node, be in input, output, hidden or bias.
+     * This stores information about the node and incoming links.
+     */
+    class Neuron {
+        private List<NeuronLink> incomingLinks;
+        private ActivationType type;
+        private double value;
+        private boolean isActive;
 
-	public Neuron() {
-		this.incomingNeurons = new ArrayList<Neuron>();
-		this.incomingWeights = new ArrayList<Double>();
-		this.type = ActivationType.SIGMOID;
-		this.value = 0;
-		this.isActive = false;
-	}
-	
-	/**
-	 * Recursively activate dependent neurons
-	 */
-	public void activate() {
-		double sum = 0;
-		Neuron n;
-		for (int i=0; i<incomingNeurons.size(); i++) {
-			n = incomingNeurons.get(i);
-			if(!n.isActive) {
-				n.activate();
-			}
-			sum += n.value * incomingWeights.get(i);
-		}
-		switch (this.type) {
-			case BIAS: this.value = 1;
-			case LINEAR: this.value = sum; break;
-			case SIGMOID: this.value = Calc.sigmoid(sum); break;
-		}
-		this.isActive = true;
-	}
-}
+        public Neuron(ActivationType type) {
+            this.incomingLinks = new ArrayList<>();
+            this.type = type;
+            this.value = 0;
+            this.isActive = false;
+        }
 
-enum ActivationType {
-	LINEAR, SIGMOID, BIAS
+        /**
+         * Recursively activate dependent neurons
+         */
+        public Neuron activate() {
+            double sum = 0;
+            for (NeuronLink link: incomingLinks) {
+                sum += link.getWeightedValue();
+            }
+            switch (this.type) {
+                case BIAS: this.value = 1;
+                case LINEAR: this.value = sum; break;
+                case SIGMOID: this.value = Calc.sigmoid(sum); break;
+            }
+            this.isActive = true;
+            return this;
+        }
+
+        public Neuron addLink(Neuron neuron, Double weight) {
+            incomingLinks.add(new NeuronLink(neuron, weight));
+            return this;
+        }
+
+        public Neuron setValue(double value) {
+            this.value = value;
+            this.isActive = true;
+            return this;
+        }
+
+        public double getValue() {
+            if (!this.isActive)
+                this.activate();
+            return this.value;
+        }
+
+        public Neuron reset() {
+            this.value = 0;
+            this.isActive = false;
+            return this;
+        }
+
+        /**
+         * Represents an incoming neuron link.
+         */
+        class NeuronLink {
+            private Neuron neuron;
+            private double weight;
+
+            /**
+             * @param neuron The id of the incoming neuron
+             * @param weight The weight of this link
+             */
+            public NeuronLink(Neuron neuron, double weight) {
+                this.neuron = neuron;
+                this.weight = weight;
+            }
+
+            public double getWeightedValue() {
+                return neuron.getValue()*weight;
+            }
+        }
+    }
+
+    enum ActivationType {
+        LINEAR, SIGMOID, BIAS
+    }
 }
 
 class Calc {
@@ -422,108 +561,68 @@ class Calc {
 	}
 }
 
-class Gene implements Comparable<Gene>{
-	public int id;
-	public int from;
-	public int to;
-	public double weight;
-	public boolean isEnabled;
-
-	public Gene() {
-		this.id = 0;
-		this.from = 0;
-		this.to = 0;
-		this.weight = 0;
-		this.isEnabled = true;
-	}
-
-	public Gene(Gene other) {
-		this.id = other.id;
-		this.from = other.from;
-		this.to = other.to;
-		this.weight = other.weight;
-		this.isEnabled = other.isEnabled;
-	}
-
-	public Gene(int id, int from, int to, double weight) {
-		this.id = id;
-		this.from = from;
-		this.to = to;
-		this.weight = weight;
-		this.isEnabled = true;
-	}
-
-	public void mutate() {
-		if (Math.random() < Params.DISABLE_MUTATION_CHANCE)
-			mutateDisable();
-		if (Math.random() < Params.ENABLE_MUTATION_CHANCE)
-			mutateEnable();
-		if (Math.random() < Params.WEIGHT_MUTATION_CHANCE)
-			mutateWeight();
-	}
-
-	public int compareTo(Gene other) {
-		return id - other.id;
-	}
-
-	/**
-	 * mutates by disabling a link
-	 */
-	public void mutateDisable() {
-		isEnabled = false;
-	}
-
-	/**
-	 * mutates by enabling a link
-	 */
-	public void mutateEnable() {
-		isEnabled = true;
-	}
-
-	/**
-	 * mutates by changing weight
-	 */
-	public void mutateWeight() {
-		if (Math.random() < 0.5)
-			weight += Math.random() * Params.WEIGHT_MUTATION_RANGE;
-		else
-			weight -= Math.random() * Params.WEIGHT_MUTATION_RANGE;
-	}
-}
-
 class Chromosome implements Comparable<Chromosome> {
-	public int neuronCount;
-	public List<Gene> genes;
-	public double fitness;
-	public int id;
+    private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
+    public static double WEIGHT_MUTATION_CHANCE;
+    public static double NODE_MUTATION_CHANCE;
+    public static double LINK_MUTATION_CHANCE;
+    public static double ENABLE_MUTATION_CHANCE;
+    public static double DISABLE_MUTATION_CHANCE;
+    public static double DISJOINT_COEFFICIENT;
+    public static double EXCESS_COEFFICIENT;
+    public static double WEIGHT_DIFFERENCE_COEFFICIENT;
 
-	public Chromosome() {
-		neuronCount = Globals.NEURON_COUNT;
-		genes = new ArrayList<Gene>();
-		fitness = -1;
-		id = Globals.getChromosomeId();
-	}
+    // Array indices for stucturalDiff
+    private static final int SAME = 0;
+    private static final int DISJOINT = 1;
+    private static final int EXCESS = 2;
 
+	private Population pop;
+    private int neuronCount;
+	private List<Gene> genes;
+	private double fitness;
+	private int id;
+
+    /**
+     * Initializes a default chromosome. This should only be called once throughout the experiment.
+     * @param pop The population this chromosome belongs to
+     * @param genes The initial genes in this chromosome
+     * @param neuronCount The maximum neuron id referenced by any gene
+     */
+	public Chromosome(Population pop, List<Gene> genes, int neuronCount) {
+		this.pop = pop;
+        this.genes = genes;
+        this.neuronCount = neuronCount;
+		this.fitness = -1;
+		this.id = -1;
+        LOGGER.info(String.format("Base gene size %d", genes.size()));
+    }
+
+    /**
+     * Clones a chromosome. This should be the only way new chromosomes are created in the experiment.
+     * @param other The chromosome to clone
+     */
 	public Chromosome(Chromosome other) {
+	    this.pop = other.pop;
 		this.neuronCount = other.neuronCount;
-		this.genes = new ArrayList<Gene>();
+		this.genes = new ArrayList<>();
 		for (Gene g : other.genes)
 			this.genes.add(new Gene(g));
 		this.fitness = other.fitness;
-		this.id = Globals.getChromosomeId();
+		this.id = this.pop.getNewChromosomeId();
+		LOGGER.finest(String.format("Cloning C%d to C%d",
+                other.id,
+                this.id));
 	}
 
 	/**
-	 * @param other - other chromosome being tested against
-	 * @return positive if better, negative if worse
+     * Compare Chromosomes based on their fitness
+	 * @param other - Other chromosome being tested against
+	 * @return Positive if better, negative if worse
 	 */
+	@Override
 	public int compareTo(Chromosome other) {
-		if (this.fitness > other.fitness)
-			return 1;
-		else if (this.fitness > other.fitness)
-			return -1;
-		else
-			return 0;
+	    return Double.compare(this.fitness, other.fitness);
 	}
 
 	/**
@@ -536,85 +635,71 @@ class Chromosome implements Comparable<Chromosome> {
 	 * @return the baby chromosome
 	 */
 	public Chromosome breedWith(Chromosome other) {
-		System.out.println("Breeding chromosome " + this.id + " with " + other.id);
-		//Ensure that this has a higher fitness than other.
-		if(other.fitness > this.fitness) {
+		// Ensure that this has a higher fitness than other.
+		if(other.fitness > this.fitness)
 			return other.breedWith(this);
-		}
-		Chromosome chromosome = new Chromosome();
 
-		Collections.sort(this.genes);
-		Collections.sort(other.genes);
-		System.out.print("Printing i: [");
-		for(int i = 0; i < this.genes.size() && i < 100; i++) {
-			System.out.print(this.genes.get(i).id + " ");
-		}
-		System.out.println("]");
-		System.out.print("Printing j: [");
-		for(int j = 0; j < other.genes.size() && j < 100; j++) {
-			System.out.print(other.genes.get(j).id + " ");
-		}
-		System.out.println("]");
-		int i = 0, j = 0;
-		while(i < genes.size() && j < other.genes.size()) {
-			System.out.println("Matching " + i + " with " + j);
-			if(genes.get(i).id == other.genes.get(j).id) {
-				if (Math.random() < 0.5)
-					chromosome.genes.add(this.genes.get(i));
-				else
-					chromosome.genes.add(other.genes.get(j));
-				i++;
-				j++;
-				System.out.println("They match!");
-				continue;
-			}
-			if(genes.get(i).id > other.genes.get(j).id) {
-				if(this.fitness == other.fitness) {
-					chromosome.genes.add(other.genes.get(j));
-				}
-				j++;
-				System.out.println("j is lower.");
-				continue;
-			}
-			if(other.genes.get(j).id > genes.get(i).id) {
-				chromosome.genes.add(genes.get(i));
-				System.out.println("i is lower.");
-				i++;
-				continue;
-			}
-		}
-		if(i < genes.size() - 1) { //add the rest of the fitter chromosome
-			for(; i < genes.size(); i++) {
-				chromosome.genes.add(genes.get(i));
-			}
-		} else {
-			//only add if other is as fit as I
-			if(other.fitness == this.fitness) {
-				for(; j < genes.size(); j++) {
-					chromosome.genes.add(other.genes.get(j));
-				}
-			}
-		}
-		chromosome.neuronCount = neuronCount;
-		if(this.fitness == other.fitness) {
-			chromosome.neuronCount = Math.max(this.neuronCount, other.neuronCount);
-		}
+        LOGGER.finer(String.format("Breeding C%d with C%d", this.id, other.id));
+        // Compare the parents
+        int[] structuralDifferences = calculateStructuralDifferences(other);
 
-		return chromosome;
+		// Clone child from fitter parent
+		Chromosome child = new Chromosome(this);
+
+		// Randomly replace same genes from weaker parent
+        Collections.sort(child.genes);
+        Collections.sort(other.genes);
+        for (int i=0; i<structuralDifferences[SAME]; i++) {
+            if (Math.random() < 0.5) {
+                child.genes.remove(i);
+                child.genes.add(i, new Gene(other.genes.get(i)));
+            }
+        }
+
+        // Add excess and disjoint genes from weaker parent if
+        // fitness is the same
+        if (this.getFitness() == other.getFitness()) {
+            for (int i=structuralDifferences[SAME]; i<other.genes.size(); i++) {
+                child.genes.add(new Gene(other.genes.get(i)));
+            }
+            child.neuronCount = Math.max(child.neuronCount, other.neuronCount);
+        }
+
+		// Mutate child
+        child.mutate();
+
+		return child;
 	}
 
 	/**
-	 * mutates the chromosome randomly:
-	 * each gene can mutate weight or get disabled/enabled
-	 * chromosome can gain a new node or link
+	 * Mutates the chromosome randomly:
+	 * Each gene can mutate weight or get disabled/enabled
+	 * Chromosome can gain a new node or link
+     * Requires a reevaluation of fitness
 	 */
-	public void mutate() {
-		for (Gene gene : genes)
-			gene.mutate();
-		if (Math.random() < Params.LINK_MUTATION_CHANCE)
-			mutateLink();
-		if (Math.random() < Params.NODE_MUTATION_CHANCE)
-			mutateNode();
+	public Chromosome mutate() {
+	    LOGGER.finest(String.format("Mutating C%d", this.id));
+	    double randomNumber = Math.random();
+	    this.fitness = -1;
+
+		if (randomNumber < LINK_MUTATION_CHANCE) {
+            mutateLink();
+            return this;
+        }
+		randomNumber -= LINK_MUTATION_CHANCE;
+		if (randomNumber  < NODE_MUTATION_CHANCE) {
+            mutateNode();
+            return this;
+        }
+        randomNumber -= NODE_MUTATION_CHANCE;
+		if (randomNumber < WEIGHT_MUTATION_CHANCE)
+        {
+            mutateGeneWeight();
+            return this;
+        }
+        randomNumber -= WEIGHT_MUTATION_CHANCE;
+
+		return this;
 	}
 
 	/**
@@ -622,50 +707,65 @@ class Chromosome implements Comparable<Chromosome> {
 	 * To make it easy for validation for now, only options are
 	 * 1) must start from a input node
 	 * 2) must end at a output node
-	 * TODO: refine with bellman's ford instead
 	 */
 	public void mutateLink() {
-		int startNode = -1;
-		int endNode = -1;
-		boolean foundPair = false;
-		for (int i = 0; i < 10; i++) { //try this 10 times or until success
-			startNode = genes.get((int) Math.floor(Math.random() * genes.size())).from;
-			endNode = genes.get((int) Math.floor(Math.random() * genes.size())).to;
-			foundPair = true;
+	    int from, to;
+	    boolean isExist = false;
 
-			if (startNode == endNode)
-				foundPair = false;
+	    // Get a list of neurons present in this chromosome
+	    Set<Integer> presentNeuronsSet = new TreeSet<>();
+	    for (Gene g: genes) {
+            presentNeuronsSet.add(g.from);
+            presentNeuronsSet.add(g.to);
+        }
+        List<Integer> presentNeuronsList = new ArrayList<>(presentNeuronsSet);
 
-			//check if the gene is already in the chromosome
-			for (Gene gene : genes)
-				if (startNode == gene.from && endNode == gene.to)
-					foundPair = false;
+	    // Attempt to get 2 neurons that fulfills all requriements
+	    for (int i=0; i<10; i++) {
+	        // Get 2 neurons
+	        from = presentNeuronsList.get((new Random()).nextInt(presentNeuronsList.size()));
+            to = presentNeuronsList.get((new Random()).nextInt(presentNeuronsList.size()));
+            // Check if the neurons are the same
+            if (from == to)
+                continue;
+            // Check if the neurons are 2 inputs
+            if (from < NeuralNet.OUTPUT_START_INDEX && to < NeuralNet.OUTPUT_START_INDEX)
+                continue;
+            // Check if the neurons are 2 outputs
+            if (from >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX &&
+                    to >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)
+                continue;
+            // Check if a link already exists
+            for (Gene g: genes) {
+                if ((g.from == from && g.to == to) ||
+                        (g.from == to && g.to == from)) {
+                    isExist = true;
+                }
+            }
+            if (isExist)
+                continue;
+            // If 2 neurons are hidden, perform DFS to determine from and to
+            if (to >= NeuralNet.HIDDEN_START_INDEX && from >= NeuralNet.HIDDEN_START_INDEX) {
+                if (!dfs(from, to)) {
+                    int temp = from;
+                    from = to;
+                    to = temp;
+                }
+            }
 
-			//if we found a pair to match, exit loop
-			if (foundPair)
-				break;
-		}
+            // Else, make sure input neuron is from or output neuron is to
+            else if (to < NeuralNet.OUTPUT_START_INDEX ||
+                    (from >= NeuralNet.OUTPUT_START_INDEX && from < NeuralNet.HIDDEN_START_INDEX)) {
+                int temp = from;
+                from = to;
+                to = temp;
+            }
 
-		if (!foundPair) //break if can't find suitable pair
-			return;
-
-		System.out.println("Mutating new link between node " + startNode + " and node " + endNode);
-		Integer linkID = Globals.INNOVATION_MAP.get(startNode).get(endNode);
-		if (linkID == null) { //link does not exist yet
-			//check if link fits our easy restriction
-			//Probable optimization: Perform DFS from end node to start node to check for links
-			//Problems: List of edges (Genes) is stored in a list and there is no way to know the list of
-			//edges from 1 node to another other than going through the list.
-			if ((startNode < Params.OUTPUT_START_INDEX) && (endNode < Params.HIDDEN_START_INDEX && endNode >= Params.OUTPUT_START_INDEX)) {
-				System.out.println("Link between nodes do not exist yet, creating new link");
-				linkID = Globals.getInnovationId();
-				Globals.INNOVATION_MAP.get(startNode).put(endNode, linkID);
-			} else {
-				System.out.println("Link is not valid, breaking out");
-				return;
-			}
-		}
-		genes.add(new Gene(linkID, startNode, endNode, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
+            // Make the link
+            Gene newGene = pop.getInnovator().innovateLink(from, to);
+            genes.add(newGene);
+            break;
+        }
 	}
 
 	/**
@@ -673,75 +773,49 @@ class Chromosome implements Comparable<Chromosome> {
 	 * can mutate a currently disabled node
 	 */
 	public void mutateNode() {
-		Gene chosenGene = genes.get((int) Math.floor(Math.random() * genes.size()));
-		genes.remove(chosenGene);
-		System.out.println("Mutating new node between node " + chosenGene.from + " and node " + chosenGene.to);
-		Integer geneID = Globals.NODE_MAP.get(chosenGene.from).get(chosenGene.to);
-		if (geneID == null) { //gene does not exist yet
-			System.out.println("node between nodes do not exist yet, creating new node");
-			//create new node from parents
-			geneID = Globals.getNodeId();
-			Globals.NODE_MAP.get(chosenGene.from).put(chosenGene.to, geneID);
-			Globals.NODE_MAP.get(chosenGene.to).put(chosenGene.from, geneID);
-
-			//create new links from parent to child
-			int linkID1 = Globals.getInnovationId();
-			Globals.INNOVATION_MAP.get(chosenGene.from).put(geneID, linkID1);
-			int linkID2 = Globals.getInnovationId();
-			Globals.INNOVATION_MAP.get(geneID).put(chosenGene.to, linkID2);
-		}
-		if (geneID > neuronCount)
-			neuronCount = geneID;
-		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
-		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
+	    Gene chosenGene = genes.get((new Random()).nextInt(genes.size()));
+	    chosenGene.isEnabled = false;
+        Gene[] newGenes = pop.getInnovator().innovateNode(chosenGene.from, chosenGene.to, chosenGene.weight);
+        genes.addAll(Arrays.asList(newGenes));
+        neuronCount = Math.max(newGenes[0].to+1, neuronCount);
+        LOGGER.finest(String.format("Creating new node N%d between N%d and N%d",
+                newGenes[0].to, chosenGene.from, chosenGene.to));
 	}
 
-	public static Chromosome createDefaultChromosome() {
-		Chromosome c = new Chromosome();
-		int hid = Params.HIDDEN_START_INDEX;
 
-		//defaultChromosome ids not set yet
-		if (Globals.INNOVATION_MAP.get(0) == null)
-			initializeStartingIds();
+    /**
+     * Select a random gene and mutates its weight
+     */
+	public void mutateGeneWeight() {
+        genes.get((new Random()).nextInt(genes.size())).mutateWeight();
+    }
 
-		// Connect input neurons to a single hidden neuron
-		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
-			c.genes.add(new Gene(i + 1, i + 1, hid + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-		}
-		// Connect single hidden neuron to output neurons
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			c.genes.add(new Gene(i + 1, hid + 1, i + 1, ((Math.random() * Params.WEIGHT_MUTATION_RANGE * 2) - Params.WEIGHT_MUTATION_RANGE)));
-		}
-
-		return c;
-	}
-
-	public Chromosome clone() {
-		Chromosome c = new Chromosome();
-		c.genes.addAll(this.genes);
-		c.fitness = this.fitness;
-		//TODO set ID maybe?
-		return c;
-	}
-
-	public static void initializeStartingIds() {
-		int hid = Params.HIDDEN_START_INDEX;
-		int currentID;
-		for (int i = 0; i < Params.OUTPUT_START_INDEX; i++) {
-			Globals.getNodeId(); //initializes the node's existence
-			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(i + 1).put(hid + 1, currentID);
-		}
-		Globals.getNodeId(); //initializes hidden's node
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			Globals.getNodeId(); //initializes the node's existence
-		}
-		for (int i = Params.OUTPUT_START_INDEX; i < Params.HIDDEN_START_INDEX; i++) {
-			currentID = Globals.getInnovationId(); //initializes the link's existence
-			Globals.INNOVATION_MAP.get(hid + 1).put(i + 1, currentID);
-		}
-	}
-
+    /**
+     * Perform a dfs from from to to
+     * @param from The node to start from
+     * @param to The node to end at
+     * @return True if you can reach to from from, False otherwise
+     */
+    public boolean dfs(int from, int to) {
+        Set<Integer> visited = new TreeSet<>();
+        Stack<Integer> stack = new Stack<>();
+        stack.push(from);
+        while (!stack.empty()) {
+            final int v = stack.pop();
+            if (!visited.contains(v)) {
+                visited.add(v);
+                for (int i: genes.stream()
+                        .filter(g -> g.from == v)
+                        .mapToInt(g -> g.to)
+                        .toArray()) {
+                    if (i == to)
+                        return true;
+                    stack.push(i);
+                };
+            }
+        }
+        return false;
+    }
 
 	/**
 	 * computes distance between genes compared to another chromosome
@@ -749,70 +823,164 @@ class Chromosome implements Comparable<Chromosome> {
 	 *
 	 * @return
 	 */
-	public double computeGeneDistance(Chromosome other) {
+	// TODO Fix distance code
+	public double distanceFrom(Chromosome other) {
 		double distance = 0;
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());
-		Collections.sort(genes);
-		Collections.sort(other.genes);
-		double largestDisjointValue = Math.min(genes.get(genes.size() - 1).id, other.genes.get(other.genes.size() - 1).id);
-		double totalWeightDifferenceOfMatchingGenes = 0;
-		double numberOfDisjointGenes = 0;
-		double numberOfMatchingGenes = 0;
-		double numberOfExcessGenes = 0;
-
-		// TODO proper algorithm. I was braindead and did the not efficient one
-		boolean matchFound;
-		for (Gene gene1 : genes) {
-			matchFound = false;
-			for (Gene gene2 : other.genes) { //check if it has a match
-				if (gene1.id == gene2.id) {
-					totalWeightDifferenceOfMatchingGenes += Math.abs(gene1.weight - gene2.weight);
-					numberOfMatchingGenes++;
-					matchFound = true;
-					break;
-				}
-				if (gene1.id < gene2.id) { //too far to have a match
-					break;
-				}
-			}
-			//no match
-			if (!matchFound) {
-				if (gene1.id <= largestDisjointValue) { //disjoint value
-					numberOfDisjointGenes++;
-				} else { //excess value
-					numberOfExcessGenes++;
-				}
-			}
-		}
-
-		//do the same for gene2, except it doesn't need to add to weight difference
-		for (Gene gene1 : other.genes) {
-			matchFound = false;
-			for (Gene gene2 : genes) { //check if it has a match
-				if (gene1.id == gene2.id) {
-					matchFound = true;
-					break;
-				}
-				if (gene1.id < gene2.id) { //too far to have a match
-					break;
-				}
-			}
-			//no match
-			if (!matchFound) {
-				if (gene1.id <= largestDisjointValue) { //disjoint value
-					numberOfDisjointGenes++;
-				} else { //excess value
-					numberOfExcessGenes++;
-				}
-			}
-		}
-
-		distance += Params.C1 * numberOfExcessGenes / NormalizeValue;
-		distance += Params.C2 * numberOfDisjointGenes / NormalizeValue;
-		distance += Params.C3 * totalWeightDifferenceOfMatchingGenes / numberOfMatchingGenes;
-		//System.out.println("geneDistance: " + distance + ", Chrom 1: " + id + ", Chrom 2: " + other.id);
+		int[] structuralDifference = calculateStructuralDifferences(other);
+        double averageWeightDifferences = 0;
+        for (int i=0; i<structuralDifference[SAME]; i++) {
+            averageWeightDifferences += this.genes.get(i).weight;
+            averageWeightDifferences -= other.genes.get(i).weight;
+        }
+        averageWeightDifferences = averageWeightDifferences / structuralDifference[SAME];
+		distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
+		distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
+		distance += WEIGHT_DIFFERENCE_COEFFICIENT * averageWeightDifferences;
 		return distance;
 	}
+
+    /**
+     * Compare this chromosome with other chromosome and determine
+     * the number of same, excess and disjoint genes
+     * @param other Chromosome to compare with
+     * @return Number of same, excess and disjoint genes
+     */
+    // TODO Confirm if same occurs after disjoint and rewrite if necessary
+	public int[] calculateStructuralDifferences(Chromosome other) {
+	    int[] structuralDiff = new int[3];
+        Collections.sort(this.genes);
+        Collections.sort(other.genes);
+        // Get number of same genes
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        while (thisIt.hasNext() && otherIt.hasNext()) {
+            if(thisIt.next().id == otherIt.next().id)
+                structuralDiff[SAME]++;
+            else
+                break;
+        }
+        // Get number of excess genes
+        int thisMaxId = Collections.max(this.genes).id;
+        int otherMaxId = Collections.max(other.genes).id;
+        // There are no excess and disjoint
+        if (thisMaxId == otherMaxId)
+            return structuralDiff;
+        int minMaxId = Math.min(thisMaxId, otherMaxId);
+        // Compute excess genes
+        ListIterator<Gene> listIt;
+        if (thisMaxId > otherMaxId) {
+            listIt = this.genes.listIterator(this.genes.size());
+        } else {
+            listIt = other.genes.listIterator(other.genes.size());
+        }
+        while (listIt.previous().id > minMaxId) {
+            structuralDiff[EXCESS]++;
+        }
+        // Compute disjoint genes
+        while (thisIt.hasNext() && thisIt.next().id <= minMaxId)
+            structuralDiff[DISJOINT]++;
+        while (otherIt.hasNext() && otherIt.next().id <= minMaxId)
+            structuralDiff[DISJOINT]++;
+
+        return structuralDiff;
+    }
+
+	public double getFitness() {
+	    return this.fitness;
+    }
+
+    public Chromosome setFitness(double fitness) {
+	    this.fitness = fitness;
+	    return this;
+    }
+
+    public boolean isEvaluated() {
+        return this.fitness != -1;
+    }
+
+    public int getNeuronCount() {
+	    return this.neuronCount;
+    }
+
+    public List<Gene> getGenes() {
+	    return this.genes;
+    }
+
+    public int getId() {
+	    return this.id;
+    }
+}
+
+class Gene implements Comparable<Gene>{
+    public static double WEIGHT_MUTATION_RANGE;
+    public int id;
+    public int from;
+    public int to;
+    public double weight;
+    public boolean isEnabled;
+
+    /**
+     * Used in innovator to create a reference gene
+     * @param id Innovation ID of gene
+     * @param from Neuron ID giving output
+     * @param to Neuron ID receiving input
+     */
+    public Gene(int id, int from, int to) {
+        this.id = id;
+        this.from = from;
+        this.to = to;
+        this.weight = 0;
+        this.isEnabled = true;
+    }
+
+    /**
+     * Clones a gene
+     * @param other Gene to clone
+     */
+    public Gene(Gene other) {
+        this.id = other.id;
+        this.from = other.from;
+        this.to = other.to;
+        this.weight = other.weight;
+        this.isEnabled = other.isEnabled;
+    }
+
+    public Gene(int id, int from, int to, double weight) {
+        this.id = id;
+        this.from = from;
+        this.to = to;
+        this.weight = weight;
+        this.isEnabled = true;
+    }
+
+    public int compareTo(Gene other) {
+        return id - other.id;
+    }
+
+    /**
+     * mutates by disabling a link
+     */
+    public Gene mutateDisable() {
+        isEnabled = false;
+        return this;
+    }
+
+    /**
+     * mutates by enabling a link
+     */
+    public Gene mutateEnable() {
+        isEnabled = true;
+        return this;
+    }
+
+    /**
+     * mutates by changing weight
+     */
+    public Gene mutateWeight() {
+        weight += Math.random() * WEIGHT_MUTATION_RANGE*2 - WEIGHT_MUTATION_RANGE;
+        return this;
+    }
 }
 
 // TODO formatting for fittest chromosome
@@ -918,166 +1086,575 @@ class StateUtils {
 		// System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
 		return slot < maxSlots[s.nextPiece][orient] ? slot : -1;
 	}
+
+	public static double getPercentageFilled(State s) {
+	    double noFilled = 0.0;
+        // Count no of tiles filled
+        int[][] field = s.getField();
+        for (int i=0; i<State.ROWS; i++) {
+            for (int j=0; j<State.COLS; j++) {
+                noFilled += field[i][j] > 0 ? 1 : 0;
+            }
+        }
+
+        return noFilled / (State.ROWS * State.COLS);
+    }
 }
 
 /**
- * Evaluates the fitness task for that chromosome a number of times equal to Params.FITNESS_EVALUATIONS,
- * then returns the average of those fitness evaluations.
- *
- * Use by passing in the chromosome, then call create subtasks which will spawn the required
- * number of worker threads to do the simulation.
+ * Handles running an experiment
  */
-class EvaluateChromosomeFitnessTask extends RecursiveTask<Double> {
-	private Chromosome chromosome;
-	private boolean isSubTask;
-	public EvaluateChromosomeFitnessTask(Chromosome chromosome) {
-		this.chromosome = chromosome;
-		this.isSubTask = false;
-	}
-	public EvaluateChromosomeFitnessTask(Chromosome chromosome, boolean isSubTask) {
-		this.chromosome = chromosome;
-		this.isSubTask = isSubTask;
-	}
-	@Override
-	protected Double compute() {
-		if (!isSubTask) {
-			return ForkJoinTask.invokeAll(createSubtasks())
-				.stream()
-				.mapToDouble(ForkJoinTask::join)
-				.sum() / Params.FITNESS_EVALUATIONS;
-		} else {
-			return evaluateChromosomeFitness();
-		}
-	}
+abstract class Experiment {
+    private static final Logger LOGGER = Logger.getLogger( Experiment.class.getName() );
+    public static double FITNESS_LIMIT;
+    public static int GENERATION_LIMIT;
+    protected Population pop;
+    protected Parameters params;
 
-	private Collection<EvaluateChromosomeFitnessTask> createSubtasks() {
-		List<EvaluateChromosomeFitnessTask> dividedTasks = new ArrayList<>();
-		for (int i=0; i<Params.FITNESS_EVALUATIONS; i++)
-			dividedTasks.add(new EvaluateChromosomeFitnessTask(chromosome, true));
-		return dividedTasks;
-	}
+    /**
+     * Setup the experiment by setting static variables of relevant classes
+     */
+    protected void setup() {
+        Experiment.FITNESS_LIMIT = params.FITNESS_LIMIT;
+        Experiment.GENERATION_LIMIT = params.GENERATION_LIMIT;
+        NeuralNet.INPUT_SIZE = params.INPUT_SIZE;
+        NeuralNet.OUTPUT_SIZE = params.OUTPUT_SIZE;
+        NeuralNet.BIAS_START_INDEX = params.BIAS_START_INDEX;
+        NeuralNet.INPUT_START_INDEX = params.INPUT_START_INDEX;
+        NeuralNet.OUTPUT_START_INDEX = params.OUTPUT_START_INDEX;
+        NeuralNet.HIDDEN_START_INDEX = params.HIDDEN_START_INDEX;
+        Population.MAXIMUM_STAGNATION = params.MAXIMUM_STAGNATION;
+        Population.POPULATION_SIZE = params.POPULATION_SIZE;
+        Population.DEFAULT_NETWORK_SIZE = params.DEFAULT_NETWORK_SIZE;
+        Chromosome.WEIGHT_MUTATION_CHANCE = params.WEIGHT_MUTATION_CHANCE;
+        Chromosome.NODE_MUTATION_CHANCE = params.NODE_MUTATION_CHANCE;
+        Chromosome.LINK_MUTATION_CHANCE = params.LINK_MUTATION_CHANCE;
+        Chromosome.ENABLE_MUTATION_CHANCE = params.ENABLE_MUTATION_CHANCE;
+        Chromosome.DISABLE_MUTATION_CHANCE = params.DISABLE_MUTATION_CHANCE;
+        Chromosome.DISJOINT_COEFFICIENT = params.DISJOINT_COEFFICIENT;
+        Chromosome.EXCESS_COEFFICIENT = params.EXCESS_COEFFICIENT;
+        Chromosome.WEIGHT_DIFFERENCE_COEFFICIENT = params.WEIGHT_DIFFERENCE_COEFFICIENT;
+        Species.CROSSOVER_CHANCE = params.CROSSOVER_CHANCE;
+        Species.COMPATIBILITY_THRESHOLD = params.COMPATIBILITY_THRESHOLD;
+        Species.SURVIVAL_THRESHOLD = params.SURVIVAL_THRESHOLD;
+        Gene.WEIGHT_MUTATION_RANGE = params.WEIGHT_MUTATION_RANGE;
+        this.pop = new Population(this::createChromosomeBlueprint, this::evaluateChromosomeFitness);
+    }
 
-	private double evaluateChromosomeFitness() {
-		State s = new State();
-		NeuralNet nn = new NeuralNet(chromosome);
-		int moves = 0;
+    /**
+     * Runs the experiment until fitness limit or generation limit is reached
+     */
+    public void run() {
+        LOGGER.info(String.format("Running the experiment"));
+        while (pop.getFittestChromosome().getFitness() < params.FITNESS_LIMIT &&
+                pop.getGeneration() < params.GENERATION_LIMIT) {
+            pop.advance();
+        }
+    }
 
-		while(!s.hasLost()) {
-			nn.activate(StateUtils.normalize(s));
-			List<Double> output = nn.getOutput();
+    public Chromosome getFittest() {
+        return pop.getFittestChromosome();
+    }
 
-			int orient = StateUtils.getOrient(s, output);
-			int slot = StateUtils.getSlot(s, orient, output);
-			if (slot == -1) {
-				s.lost = true;
-				continue;
-			}
-			s.makeMove(orient, slot);
-			moves += 1;
-		}
+    /**
+     * Returns a blueprint in the form of integer arrays,
+     * each containing 2 integers, outgoing neuron id and incoming neuron id
+     * in that order.
+     * @return A blueprint to create a chromosome with
+     */
+    abstract public List<Integer[]> createChromosomeBlueprint();
+    abstract public double evaluateChromosomeFitness(Chromosome chromosome);
 
-		double fitness = (double) s.getRowsCleared();
-		fitness = fitness == 0 ? moves / 100.0 : fitness;
-		//System.out.printf("Chromosome #%d fitness computed with thread %s%n", chromosome.id, Thread.currentThread().getName());
-		return fitness;
-	}
+    class Parameters {
+        public int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
+        public int OUTPUT_SIZE = 4+State.COLS;
+        public int DEFAULT_HIDDEN_SIZE = 0;
+        public int DEFAULT_NETWORK_SIZE = 1 + INPUT_SIZE + OUTPUT_SIZE + DEFAULT_HIDDEN_SIZE;
+        public int BIAS_START_INDEX = 0;
+        public int INPUT_START_INDEX = 1;
+        public int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
+        public int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+        public int GENERATION_LIMIT = 20; //Number of iterations
+        public double FITNESS_LIMIT = 1000; //Value for which we automatically end the search
+
+        public int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosome to be averaged
+        public int POPULATION_SIZE = 100; // Population Size
+        public double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
+        public int MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
+        public double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
+        public double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
+        public double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
+        public double LINK_MUTATION_CHANCE = 0.25; // Chance of inserting a new link
+        public double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
+        public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
+        public double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
+        public double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
+        public double DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
+        public double EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
+        public double WEIGHT_DIFFERENCE_COEFFICIENT = 3; // Coefficient for average weight difference
+
+        public Parameters(int inputSize, int outputSize, int hiddenSize) {
+            this.INPUT_SIZE = inputSize;
+            this.OUTPUT_SIZE = outputSize;
+            this.DEFAULT_HIDDEN_SIZE = hiddenSize;
+            this.DEFAULT_NETWORK_SIZE = 1 + inputSize + outputSize + hiddenSize;
+            this.OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
+            this.HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
+        }
+    }
 }
 
-class EvaluatePopulationFitnessTask extends RecursiveAction {
-	private List<Chromosome> population;
-	private Chromosome chromosome;
-	private boolean isSubTask;
+class XORExperiment extends Experiment {
+    private static final Logger LOGGER = Logger.getLogger( XORExperiment.class.getName() );
+    public XORExperiment() {
+    	LOGGER.info(String.format("Initializing an XOR Experiment"));
+        this.params = new Parameters(2, 1, 0);
+        this.params.FITNESS_LIMIT = 0.99999;
+        this.params.GENERATION_LIMIT = 300;
+        super.setup();
+    }
 
-	public EvaluatePopulationFitnessTask(List<Chromosome> population) {
-		this.population = population;
-		this.isSubTask = false;
-	}
-	public EvaluatePopulationFitnessTask(Chromosome chromosome, boolean isSubTask) {
-		this.chromosome = chromosome;
-		this.isSubTask = isSubTask;
-	}
+    @Override
+    public List<Integer[]> createChromosomeBlueprint() {
+        // Connect bias and input nodes to output nodes
+        List<Integer[]> chromosomeBlueprint = new ArrayList<>();
+        for (int o=params.BIAS_START_INDEX; o<params.OUTPUT_START_INDEX; o++) {
+            for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
+            }
+        }
 
-	@Override
-	protected void compute() {
-		if (!isSubTask) {
-			ForkJoinTask.invokeAll(createSubtasks());
-		} else {
-			evaluateChromosomeFitness();
-		}
-	}
+        return chromosomeBlueprint;
+    }
 
-	private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
-		List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<EvaluatePopulationFitnessTask>();
-		for (Chromosome c: population) {
-			dividedTasks.add(new EvaluatePopulationFitnessTask(c, true));
-		}
-		return dividedTasks;
-	}
+    @Override
+    public double evaluateChromosomeFitness(Chromosome chromosome) {
+        Double[][][] concepts = {
+                {{0.0, 0.0}, {0.0}},
+                {{0.0, 1.0}, {1.0}},
+                {{1.0, 0.0}, {1.0}},
+                {{1.0, 1.0}, {0.0}}
+        };
+        double error = 0;
 
-	private void evaluateChromosomeFitness() {
-		chromosome.fitness = (new EvaluateChromosomeFitnessTask(chromosome).compute());
-	}
+        NeuralNet nn = new NeuralNet(chromosome);
+        Double[] outputs;
+        for (Double[][] c: concepts) {
+            outputs = nn.activate(Arrays.asList(c[0])).toArray(new Double[1]);
+            error += Math.pow(c[1][0] - outputs[0], 2);
+        }
+
+        return 1.0 - error;
+    }
 }
 
-class Params {
-	public static final int INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
-	public static final int OUTPUT_SIZE = 4+State.COLS;
-	public static final int BIAS_START_INDEX = 0;
-	public static final int INPUT_START_INDEX = 1;
-	public static final int OUTPUT_START_INDEX = INPUT_START_INDEX + INPUT_SIZE;
-	public static final int HIDDEN_START_INDEX = OUTPUT_START_INDEX + OUTPUT_SIZE;
-	public static final int GENERATION_LIMIT = 20; //Number of iterations
-	public static final double FITNESS_LIMIT = 1000; //Value for which we automatically end the search
+class TetrisExperiment extends Experiment {
+    private static final Logger LOGGER = Logger.getLogger( TetrisExperiment.class.getName() );
+    private static final int inputSize = State.ROWS * State.COLS + State.N_PIECES;
+    private static final int outputSize = 4 * State.COLS;
+    private static final int hiddenSize = 1;
 
-	public static final int FITNESS_EVALUATIONS = 20; // Number of evaluations performed per chromosome to be averaged
-	public static final int POPULATION_SIZE = 100; // Population Size
-	public static final double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
-	public static final double MAXIMUM_STAGNATION = 20; // Generations of non-improvement before species is culled
-	public static final double WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
-	public static final double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
-	public static final double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
-	public static final double LINK_MUTATION_CHANCE = 0.25; // Chance of inserting a new link
-	public static final double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
-	public static final double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
-	public static final double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
-	public static final double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
-	public static final double C1 = 1; // Coefficient for importance of disjoint genes in measuring compatibility
-	public static final double C2 = 1; // Coefficient for excess genes
-	public static final double C3 = 3; // Coefficient for average weight difference
+    public TetrisExperiment() {
+        this.params = new Parameters(inputSize, outputSize, hiddenSize);
+        this.params.FITNESS_LIMIT = 1000;
+        this.params.GENERATION_LIMIT = 10000;
+        this.params.POPULATION_SIZE = 100;
+        this.params.FITNESS_EVALUATIONS = 10;
+        this.params.COMPATIBILITY_THRESHOLD = 0.1;
+        super.setup();
+    }
+
+    @Override
+    public List<Integer[]> createChromosomeBlueprint() {
+        List<Integer[]> chromosomeBlueprint = new ArrayList<>();
+        // Connect bias and input nodes to 5 hidden nodes
+        for (int o=params.BIAS_START_INDEX; o<params.OUTPUT_START_INDEX; o++) {
+            for (int i = params.HIDDEN_START_INDEX; i<params.DEFAULT_NETWORK_SIZE; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
+            }
+        }
+        // Connect 5 hidden nodes to output nodes
+        for (int o = params.HIDDEN_START_INDEX; o<params.DEFAULT_NETWORK_SIZE; o++) {
+            for (int i=params.OUTPUT_START_INDEX; i<params.HIDDEN_START_INDEX; i++) {
+                chromosomeBlueprint.add(new Integer[]{o, i});
+            }
+        }
+        return chromosomeBlueprint;
+    }
+
+    @Override
+    public double evaluateChromosomeFitness(Chromosome chromosome) {
+        return (new EvaluateForTetrisTask(chromosome)).compute();
+    }
+
+
+    /**
+     * Evaluates the fitness task for that chromosome a number of times equal to Params.FITNESS_EVALUATIONS,
+     * then returns the average of those fitness evaluations.
+     *
+     * Use by passing in the chromosome, then call create subtasks which will spawn the required
+     * number of worker threads to do the simulation.
+     */
+    class EvaluateForTetrisTask extends RecursiveTask<Double> {
+        private Chromosome chromosome;
+        private boolean isSubTask;
+
+        public EvaluateForTetrisTask(Chromosome chromosome) {
+            this.chromosome = chromosome;
+            this.isSubTask = false;
+        }
+        public EvaluateForTetrisTask(Chromosome chromosome, boolean isSubTask) {
+            this.chromosome = chromosome;
+            this.isSubTask = isSubTask;
+        }
+        @Override
+        protected Double compute() {
+            if (!isSubTask) {
+                return ForkJoinTask.invokeAll(createSubtasks())
+                        .stream()
+                        .mapToDouble(ForkJoinTask::join)
+                        .sum() / params.FITNESS_EVALUATIONS;
+            } else {
+    			return evaluateChromosomeFitness();
+            }
+        }
+
+        private Collection<EvaluateForTetrisTask> createSubtasks() {
+            List<EvaluateForTetrisTask> dividedTasks = new ArrayList<>();
+            for (int i=0; i<params.FITNESS_EVALUATIONS; i++)
+                dividedTasks.add(new EvaluateForTetrisTask(chromosome, true));
+            return dividedTasks;
+        }
+
+        private double evaluateChromosomeFitness() {
+            State s = new State();
+            NeuralNet nn = new NeuralNet(chromosome);
+            int moves = 0;
+
+            while(!s.hasLost()) {
+                nn.activate(StateUtils.normalize(s));
+                List<Double> output = nn.getOutput();
+
+                int orient = StateUtils.getOrient(s, output);
+                int slot = StateUtils.getSlot(s, orient, output);
+                if (slot == -1) {
+                    s.lost = true;
+                    continue;
+                }
+                s.makeMove(orient, slot);
+            }
+
+            double fitness = (double) s.getRowsCleared();
+            fitness += StateUtils.getPercentageFilled(s);
+            return fitness;
+        }
+    }
 }
 
-class Globals {
-	//TODO change 'node' into 'neuron'
-	public static int NEURON_COUNT = Params.HIDDEN_START_INDEX+1;
-	public static int INNOVATION_COUNT = 0;
-	public static int CHROMOSOME_COUNT = 0;
-	public static int NODE_COUNT = 0;
-	public static int SPECIES_COUNT = 0;
+class Population {
+    private static final Logger LOGGER = Logger.getLogger( Population.class.getName() );
+    public static int MAXIMUM_STAGNATION;
+    public static int POPULATION_SIZE;
+    public static int DEFAULT_NETWORK_SIZE;
+    private int chromosomeCount;
+    private int speciesCount;
+    private int generation;
+    private Innovator innovator;
+    private List<Chromosome> chromosomes;
+    private List<Species> species;
+    private Function<Chromosome, Double> chromosomeFitnessEvaluator;
 
-	//map is (start reference node, target reference node, id)
-	public static Map<Integer, Map<Integer, Integer>> INNOVATION_MAP = new HashMap<Integer, Map<Integer, Integer>>();
-	//map is (first parent reference node, second parent reference node, id)
-	public static Map<Integer, Map<Integer, Integer>> NODE_MAP = new HashMap<Integer, Map<Integer, Integer>>();
+    public Population(Supplier<List<Integer[]>> chromosomeBlueprintCreator,
+                      Function<Chromosome, Double> chromosomeFitnessEvaluator) {
+        LOGGER.info(String.format("Creating a new population"));
+        this.chromosomeCount = 0;
+        this.speciesCount = 0;
+        this.chromosomes = new ArrayList<>(POPULATION_SIZE);
+        this.species = new ArrayList<>();
+        this.innovator = new Innovator(DEFAULT_NETWORK_SIZE);
+        this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+        this.generation = 0;
+        this.populate(
+                createDefaultChromosome(chromosomeBlueprintCreator.get()));
+        this.evaluateFitness();
+        this.allocateChromosomesToSpecies();
+		this.allocateOffsprings();
+    }
 
-	public static int getInnovationId() {
-		INNOVATION_COUNT++;
-		return INNOVATION_COUNT;
-	}
+    /**
+     * Populate the population by copying the base chromosome and mutating them
+     * @param base Base chromosome to make copies of
+     */
+    private void populate(Chromosome base) {
+        for (int i=0; i<POPULATION_SIZE; i++)
+            chromosomes.add((new Chromosome(base)).mutate());
+    }
 
-	public static int getChromosomeId() {
-		CHROMOSOME_COUNT++;
-		return CHROMOSOME_COUNT;
-	}
+    /**
+     * Create a base chromosome from the supplied blueprint
+     * @param blueprint The blueprint to create the base chromosome with
+     * @return The base chromosome created from the blueprint
+     */
+    private Chromosome createDefaultChromosome(List<Integer[]> blueprint) {
+        LOGGER.fine(String.format("Creating a new default chromosome"));
+        List<Gene> genes = new ArrayList<>();
+        for (Integer[] b: blueprint)
+            genes.add(this.innovator.innovateLink(b[0], b[1]));
+        return new Chromosome(this, genes, DEFAULT_NETWORK_SIZE);
+    }
 
-	public static int getSpeciesId() {
-		SPECIES_COUNT++;
-		return SPECIES_COUNT;
-	}
+    /**
+     * @return A new unique chromosome ID
+     */
+    public int getNewChromosomeId() {
+        return chromosomeCount++;
+    }
 
-	public static int getNodeId() {
-		NODE_COUNT++;
-		NODE_MAP.put(NODE_COUNT, new HashMap<Integer, Integer>());
-		INNOVATION_MAP.put(NODE_COUNT, new HashMap<Integer, Integer>());
-		return NODE_COUNT;
-	}
+    /**
+     * @return A new unique species ID
+     */
+    public int getNewSpeciesId() {
+        return speciesCount++;
+    }
+
+    /**
+     * Advance the population to the next generation
+     * Precondition: All chromosomes must have been evaluated for fitness and separated into species,
+	 * and offsprings allocated
+     * Postcondition: A new generation with all chromosomes evaluated for fitness and separated,
+	 * and offsprings allocated
+     * into species
+     */
+    public void advance() {
+        generation++;
+        innovator.clearInnovations();
+        chromosomes.clear();
+        LOGGER.info(String.format("Entering Generation: %d", generation));
+        LOGGER.fine(String.format("Slaughtering the weak of each species"));
+        for (Species s: species)
+            s.cull();
+        LOGGER.fine(String.format("Creating the next generation"));
+        for (Species s: species) {
+            chromosomes.addAll(s.produceAllocatedOffsprings());
+            s.clear();
+        }
+        evaluateFitness();
+        allocateChromosomesToSpecies();
+        LOGGER.fine(String.format("Pruning extinct species"));
+        species.removeIf(s -> s.size() <= 0);
+        LOGGER.fine(String.format("Allocate offsprings to species"));
+        allocateOffsprings();
+    }
+
+    /**
+     * Evaluate fitness of population
+     */
+    private void evaluateFitness() {
+        LOGGER.fine(String.format("Evaluating population fitness"));
+        ForkJoinPool.commonPool().invoke(
+                new EvaluatePopulationFitnessTask(chromosomes, chromosomeFitnessEvaluator));
+        LOGGER.info(String.format("Population max fitness: %f", Collections.max(chromosomes).getFitness()));
+    }
+
+    /**
+     * Allocates chromosomes to existing species
+     */
+    private void allocateChromosomesToSpecies() {
+        LOGGER.fine(String.format("Allocating chromosomes into species"));
+        for (Chromosome c: chromosomes) {
+            found: {
+                for (Species s: species) {
+                    if (s.compatibleWith(c)) {
+                        LOGGER.finest(String.format("Adding C%d to S%d",
+                                c.getId(),
+                                s.getId()));
+                        s.add(c);
+                        break found;
+                    }
+                }
+                species.add(new Species(this, c));
+                LOGGER.finer(String.format("Species not found, creating S%d with C%d as rep",
+                        species.get(species.size()-1).getId(),
+                        c.getId()));
+            }
+        }
+        // Species final computation
+        LOGGER.fine(String.format("All species allocated, calcuating species fitness"));
+        for (Species s: species)
+            s.confirmSpecies();
+    }
+
+    /**
+     * Allocate no. of offsprings allowed to each species
+     */
+    private void allocateOffsprings() {
+        double averageSum = species.stream()
+                .mapToDouble(Species::getAverageFitness)
+                .sum();
+        for (Species s: species)
+            s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
+    }
+
+    /**
+     * @return The fittest chromosome
+     */
+    public Chromosome getFittestChromosome() {
+        return Collections.max(chromosomes);
+    }
+
+    /**
+     * @return Current generation number
+     */
+    public int getGeneration() {
+        return this.generation;
+    }
+
+    /**
+     * Used by species to retrieve a random chromosome from another species for crossover
+     * @return A random chromosome from a random species
+     */
+    public Chromosome getRandomChromosomeFromSpecies() {
+        Chromosome rand = null;
+        while (rand == null) {
+            rand = species.get((new Random().nextInt(species.size()))).getRandomChromosome();
+        }
+        return rand;
+    }
+
+    public Innovator getInnovator() {
+        return innovator;
+    }
+
+    /**
+     * Task for parallelized evaluations of population fitness
+     * Sets fitness in the chromosome on completion
+     */
+    class EvaluatePopulationFitnessTask extends RecursiveAction {
+        private List<Chromosome> population;
+        private Chromosome chromosome;
+        private Function<Chromosome, Double> chromosomeFitnessEvaluator;
+        private boolean isSubTask;
+
+        public EvaluatePopulationFitnessTask(List<Chromosome> population,
+                                             Function<Chromosome, Double> chromosomeFitnessEvaluator) {
+            this.population = population;
+            this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+            this.isSubTask = false;
+        }
+        public EvaluatePopulationFitnessTask(Chromosome chromosome,
+                                             Function<Chromosome, Double> chromosomeFitnessEvaluator,
+                                             boolean isSubTask) {
+            this.chromosome = chromosome;
+            this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
+            this.isSubTask = isSubTask;
+        }
+
+        @Override
+        protected void compute() {
+            if (!isSubTask) {
+                ForkJoinTask.invokeAll(createSubtasks());
+            } else {
+                evaluateChromosomeFitness();
+            }
+        }
+
+        private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
+            List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<>();
+            for (Chromosome c: population) {
+                dividedTasks.add(new EvaluatePopulationFitnessTask(c, chromosomeFitnessEvaluator, true));
+            }
+            return dividedTasks;
+        }
+
+        private void evaluateChromosomeFitness() {
+            chromosome.setFitness(chromosomeFitnessEvaluator.apply(chromosome));
+            LOGGER.finest(String.format("C%d has a fitness of %f",
+                    chromosome.getId(),
+                    chromosome.getFitness()));
+        }
+    }
+
+    /**
+     * Handles the creation of new innovations (i.e. genes)
+     */
+    class Innovator {
+        private int innovationCount;
+        private int neuronCount;
+        private Map<Integer[], Gene> linkInnovations;
+        private Map<Integer[], Gene[]> nodeInnovations;
+
+        /**
+         * @param neuronCount The initial number of neurons in the network
+         */
+        public Innovator(int neuronCount) {
+            this.innovationCount = 0;
+            this.neuronCount = neuronCount;
+            this.linkInnovations = new HashMap<>();
+            this.nodeInnovations = new HashMap<>();
+        }
+
+        /**
+         * Create a new link innovation if it has yet to exist and clone it
+         * @param from Neuron giving output
+         * @param to Neuron receiving input
+         * @return A new gene connecting the neurons
+         */
+        public Gene innovateLink(int from, int to) {
+            LOGGER.finest(String.format("Link innovation requested %d -> %d",
+                    from, to));
+            Integer[] key = new Integer[]{from, to};
+            if (!linkInnovations.containsKey(key)) {
+                LOGGER.finest(String.format("Link innovation %d -> %d did not exist, creating",
+                        from, to));
+                linkInnovations.put(key, new Gene(getNewInnovationId(), from, to));
+            }
+            return (new Gene(linkInnovations.get(key))).mutateWeight();
+        }
+
+        /**
+         * Create a new node innovation if it has yet to exist and clone it
+         * @param from Neuron giving output
+         * @param to Neuron receiving input
+         * @return 2 new genes connecting the neurons to a hidden neuron
+         */
+        public Gene[] innovateNode(int from, int to, double weight) {
+            Integer[] key = new Integer[]{from, to};
+            if (!nodeInnovations.containsKey(key)) {
+                int hiddenNeuron = getNewNeuronId();
+                nodeInnovations.put(key, new Gene[]{
+                        new Gene(getNewInnovationId(), from, hiddenNeuron),
+                        new Gene(getNewInnovationId(), hiddenNeuron, to),
+                });
+            }
+            Gene[] toCopy = nodeInnovations.get(key);
+            Gene[] newGenes = new Gene[2];
+            newGenes[0] = (new Gene(toCopy[0]));
+            newGenes[0].weight = 1.0;
+            newGenes[1] = (new Gene(toCopy[1]));
+            newGenes[1].weight = weight;
+            return newGenes;
+        }
+
+        /**
+         * Clear the innovation maps
+         */
+        public void clearInnovations() {
+            linkInnovations.clear();
+            nodeInnovations.clear();
+        }
+
+        /**
+         * @return A new unique innovation ID
+         */
+        private int getNewInnovationId() {
+            return innovationCount++;
+        }
+
+        /**
+         * @return A new hidden neuron ID
+         */
+        private int getNewNeuronId() {
+            return neuronCount++;
+        }
+    }
 }

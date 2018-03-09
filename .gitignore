@@ -3,6 +3,8 @@
 
 # Log file
 *.log
+*.1
+*.lck
 
 # BlueJ files
 *.ctxt
@@ -24,3 +26,4 @@ hs_err_pid*
 # Don't commit intelliJ project stuff
 .idea/
 .outputPath/
+.logs/

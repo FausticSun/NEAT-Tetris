@@ -24,8 +24,45 @@ public class PlayerSkeleton {
 	}
 
 	public PlayerSkeleton() {
-        Experiment ex = new XORExperiment();
+        Experiment ex = new TetrisExperiment();
         ex.run();
+        Chromosome fittest = ex.getFittest();
+        if (ex instanceof TetrisExperiment) {
+            State s = new State();
+            NeuralNet nn = new NeuralNet(fittest);
+
+            if (!HEADLESS)
+                new TFrame(s);
+            while (!s.hasLost()) {
+                nn.activate(StateUtils.normalize(s));
+                List<Double> output = nn.getOutput();
+
+                // DEUBG: Output output weights
+                // for (double d: output)
+                // 	System.out.format("%.3f ", d);
+                // System.out.format("%n");
+
+                int orient = StateUtils.getOrient(s, output);
+                int slot = StateUtils.getSlot(s, orient, output);
+                if (slot == -1) {
+                    s.lost = true;
+                    continue;
+                }
+
+                s.makeMove(orient, slot);
+
+                if (!HEADLESS) {
+                    s.draw();
+                    s.drawNext(0, 0);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            LOGGER.info(String.format("%d rows cleared", s.getRowsCleared()));
+        }
     }
 
 //	public PlayerSkeleton() {
@@ -1051,6 +1088,19 @@ class StateUtils {
 		// System.out.printf("%d, %d, %d%n", s.nextPiece, slot, maxSlots[s.nextPiece][orient]);
 		return slot < maxSlots[s.nextPiece][orient] ? slot : -1;
 	}
+
+	public static double getPercentageFilled(State s) {
+	    double noFilled = 0.0;
+        // Count no of tiles filled
+        int[][] field = s.getField();
+        for (int i=0; i<State.ROWS; i++) {
+            for (int j=0; j<State.COLS; j++) {
+                noFilled += field[i][j] > 0 ? 1 : 0;
+            }
+        }
+
+        return noFilled / (State.ROWS * State.COLS);
+    }
 }
 
 /**
@@ -1102,6 +1152,10 @@ abstract class Experiment {
                 pop.getGeneration() < params.GENERATION_LIMIT) {
             pop.advance();
         }
+    }
+
+    public Chromosome getFittest() {
+        return pop.getFittestChromosome();
     }
 
     /**
@@ -1200,12 +1254,15 @@ class TetrisExperiment extends Experiment {
     private static final Logger LOGGER = Logger.getLogger( TetrisExperiment.class.getName() );
     private static final int inputSize = State.ROWS * State.COLS + State.N_PIECES;
     private static final int outputSize = 4 * State.COLS;
-    private static final int hiddenSize = 5;
+    private static final int hiddenSize = 1;
 
     public TetrisExperiment() {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
-        this.params.GENERATION_LIMIT = 300;
+        this.params.GENERATION_LIMIT = 10000;
+        this.params.POPULATION_SIZE = 100;
+        this.params.FITNESS_EVALUATIONS = 10;
+        this.params.COMPATIBILITY_THRESHOLD = 0.1;
         super.setup();
     }
 
@@ -1287,11 +1344,10 @@ class TetrisExperiment extends Experiment {
                     continue;
                 }
                 s.makeMove(orient, slot);
-                moves += 1;
             }
 
             double fitness = (double) s.getRowsCleared();
-            fitness = fitness == 0 ? moves / 100.0 : fitness;
+            fitness += StateUtils.getPercentageFilled(s);
             return fitness;
         }
     }
@@ -1373,6 +1429,7 @@ class Population {
      */
     public void advance() {
         generation++;
+        innovator.clearInnovations();
         chromosomes.clear();
         LOGGER.info(String.format("Entering Generation: %d", generation));
         LOGGER.fine(String.format("Slaughtering the weak of each species"));
@@ -1506,8 +1563,7 @@ class Population {
         private Collection<EvaluatePopulationFitnessTask> createSubtasks() {
             List<EvaluatePopulationFitnessTask> dividedTasks = new ArrayList<>();
             for (Chromosome c: population) {
-                if (!c.isEvaluated())
-                    dividedTasks.add(new EvaluatePopulationFitnessTask(c, chromosomeFitnessEvaluator, true));
+                dividedTasks.add(new EvaluatePopulationFitnessTask(c, chromosomeFitnessEvaluator, true));
             }
             return dividedTasks;
         }

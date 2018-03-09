@@ -674,10 +674,28 @@ class Chromosome implements Comparable<Chromosome> {
 		double distance = 0;
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());
 		int[] structuralDifference = calculateStructuralDifferences(other);
-        double averageWeightDifferences = 0;
-        for (int i=0; i<structuralDifference[SAME]; i++)
-            averageWeightDifferences += Math.abs(this.genes.get(i).weight - other.genes.get(i).weight);
+
+		// Compute average weight difference
+		double averageWeightDifferences = 0;
+        Collections.sort(this.genes);
+        Collections.sort(other.genes);
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene thisGene = thisIt.next();
+        Gene otherGene = otherIt.next();
+        while (thisGene != null && otherGene != null) {
+            if (thisGene.id == otherGene.id) {
+                averageWeightDifferences += Math.abs(thisGene.weight - otherGene.weight);
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id > otherGene.id) {
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id < otherGene.id) {
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+            }
+        }
         averageWeightDifferences = averageWeightDifferences / structuralDifference[SAME];
+
 		distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
 		distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
 		distance += WEIGHT_DIFFERENCE_COEFFICIENT * averageWeightDifferences;

@@ -163,7 +163,6 @@ public class PlayerSkeleton {
 //
 //			Collections.sort(population);
 //			FittestChromosome fc = new FittestChromosome(population.get(0));
-//			// TODO do something with fittest chromosome
 //			System.out.println("Best fitness: " + population.get(0).fitness);
 //			return;
 //		}
@@ -678,7 +677,6 @@ class Chromosome implements Comparable<Chromosome> {
 	 * Chromosome can gain a new node or link
      * Requires a reevaluation of fitness
 	 */
-	// TODO Change to weighted mutation, only 1 type of mutation is allowed
 	public Chromosome mutate() {
 	    LOGGER.finest(String.format("Mutating C%d", this.id));
 	    double randomNumber = Math.random();
@@ -709,7 +707,6 @@ class Chromosome implements Comparable<Chromosome> {
 	 * To make it easy for validation for now, only options are
 	 * 1) must start from a input node
 	 * 2) must end at a output node
-	 * TODO: refine with bellman's ford instead
 	 */
 	public void mutateLink() {
 	    int from, to;
@@ -826,6 +823,7 @@ class Chromosome implements Comparable<Chromosome> {
 	 *
 	 * @return
 	 */
+	// TODO Fix distance code
 	public double distanceFrom(Chromosome other) {
 		double distance = 0;
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());

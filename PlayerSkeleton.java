@@ -706,7 +706,11 @@ class Chromosome implements Comparable<Chromosome> {
                 continue;
             // If 2 neurons are hidden, perform DFS to determine from and to
             if (to > NeuralNet.HIDDEN_START_INDEX && from > NeuralNet.HIDDEN_START_INDEX) {
-                // TODO: DFS
+                if (!dfs(from, to)) {
+                    int temp = from;
+                    from = to;
+                    to = temp;
+                }
             }
 
             // Else, make sure input neuron is from or output neuron is to
@@ -717,6 +721,7 @@ class Chromosome implements Comparable<Chromosome> {
                 to = temp;
             }
 
+            // Make the link
             Gene newGene = pop.getInnovator().innovateLink(from, to);
             genes.add(newGene);
             break;
@@ -743,6 +748,33 @@ class Chromosome implements Comparable<Chromosome> {
      */
 	public void mutateGeneWeight() {
         genes.get((new Random()).nextInt(genes.size())).mutateWeight();
+    }
+
+    /**
+     * Perform a dfs from from to to
+     * @param from The node to start from
+     * @param to The node to end at
+     * @return True if you can reach to from from, False otherwise
+     */
+    public boolean dfs(int from, int to) {
+        Set<Integer> visited = new TreeSet<>();
+        Stack<Integer> stack = new Stack<>();
+        stack.push(from);
+        while (!stack.empty()) {
+            final int v = stack.pop();
+            if (!visited.contains(v)) {
+                visited.add(v);
+                for (int i: genes.stream()
+                        .filter(g -> g.from == v)
+                        .mapToInt(g -> g.to)
+                        .toArray()) {
+                    if (i == to)
+                        return true;
+                    stack.push(i);
+                };
+            }
+        }
+        return false;
     }
 
 	/**

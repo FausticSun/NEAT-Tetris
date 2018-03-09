@@ -465,29 +465,48 @@ class Chromosome implements Comparable<Chromosome> {
 			return other.breedWith(this);
 
         LOGGER.finer(String.format("Breeding C%d with C%d", this.id, other.id));
-        // Compare the parents
-        int[] structuralDifferences = calculateStructuralDifferences(other);
-
 		// Clone child from fitter parent
 		Chromosome child = new Chromosome(this);
 
 		// Randomly replace same genes from weaker parent
         Collections.sort(child.genes);
         Collections.sort(other.genes);
-        for (int i=0; i<structuralDifferences[SAME]; i++) {
-            if (Math.random() < 0.5) {
-                child.genes.remove(i);
-                child.genes.add(i, new Gene(other.genes.get(i)));
+        ListIterator<Gene> childIt = child.genes.listIterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene childGene = childIt.next();
+        Gene otherGene = otherIt.next();
+        while (childGene != null && otherGene != null) {
+            if (childGene.id == otherGene.id) {
+                // Same gene, randomly replace child gene with other gene
+                if (Math.random() < 0.5)
+                    childIt.set(new Gene(otherGene));
+                childGene = childIt.hasNext() ? childIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (childGene.id > otherGene.id) {
+                // Disjoint gene in other, add to child if fitness is the same
+                if (this.getFitness() == other.getFitness()) {
+                    childIt.previous();
+                    childIt.add(new Gene(otherGene));
+                    childIt.next();
+                }
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (childGene.id < otherGene.id) {
+                // Disjoint gene in child, do nothing
+                childGene = childIt.hasNext() ? childIt.next() : null;
             }
         }
+        // Add excess genes if fitness is the same and there are excess genes
+        if (this.getFitness() == other.getFitness() && otherGene != null) {
+            childIt.add(otherGene);
+            while (otherIt.hasNext())
+                childIt.add(otherIt.next());
+        }
 
-        // Add excess and disjoint genes from weaker parent if
-        // fitness is the same
-        if (this.getFitness() == other.getFitness()) {
-            for (int i=structuralDifferences[SAME]; i<other.genes.size(); i++) {
-                child.genes.add(new Gene(other.genes.get(i)));
-            }
-            child.neuronCount = Math.max(child.neuronCount, other.neuronCount);
+        // Manually recalcuate neuronCount
+        child.neuronCount = 0;
+        for (Gene g: child.genes) {
+            child.neuronCount = Math.max(child.neuronCount, g.from + 1);
+            child.neuronCount = Math.max(child.neuronCount, g.to + 1);
         }
 
 		// Mutate child
@@ -1087,7 +1106,7 @@ class TetrisExperiment extends Experiment {
         this.params.GENERATION_LIMIT = 100;
         this.params.POPULATION_SIZE = 100;
         this.params.FITNESS_EVALUATIONS = 10;
-        this.params.COMPATIBILITY_THRESHOLD = 10;
+        this.params.COMPATIBILITY_THRESHOLD = 1;
         super.setup();
     }
 

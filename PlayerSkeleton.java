@@ -719,27 +719,13 @@ class Chromosome implements Comparable<Chromosome> {
 	 * can mutate a currently disabled node
 	 */
 	public void mutateNode() {
-//		Gene chosenGene = genes.get((int) Math.floor(Math.random() * genes.size()));
-//		genes.remove(chosenGene);
-//		System.out.println("Mutating new node between node " + chosenGene.from + " and node " + chosenGene.to);
-//		Integer geneID = Globals.NODE_MAP.get(chosenGene.from).get(chosenGene.to);
-//		if (geneID == null) { //gene does not exist yet
-//			System.out.println("node between nodes do not exist yet, creating new node");
-//			//create new node from parents
-//			geneID = Globals.getNodeId();
-//			Globals.NODE_MAP.get(chosenGene.from).put(chosenGene.to, geneID);
-//			Globals.NODE_MAP.get(chosenGene.to).put(chosenGene.from, geneID);
-//
-//			//create new links from parent to child
-//			int linkID1 = Globals.getInnovationId();
-//			Globals.INNOVATION_MAP.get(chosenGene.from).put(geneID, linkID1);
-//			int linkID2 = Globals.getInnovationId();
-//			Globals.INNOVATION_MAP.get(geneID).put(chosenGene.to, linkID2);
-//		}
-//		if (geneID > neuronCount)
-//			neuronCount = geneID;
-//		genes.add(new Gene(Globals.INNOVATION_MAP.get(chosenGene.from).get(geneID), chosenGene.from, geneID, 1));
-//		genes.add(new Gene(Globals.INNOVATION_MAP.get(geneID).get(chosenGene.to), geneID, chosenGene.to, chosenGene.weight));
+	    LOGGER.info(String.format("C%d has %d genes", id, genes.size()));
+	    Gene chosenGene = genes.get((new Random()).nextInt(genes.size()));
+	    chosenGene.isEnabled = false;
+        Gene[] newGenes = pop.getInnovator().innovateNode(chosenGene.from, chosenGene.to, chosenGene.weight);
+        genes.addAll(Arrays.asList(newGenes));
+        LOGGER.finest(String.format("Creating new node N%d between N%d and N%d",
+                newGenes[0].to, chosenGene.from, chosenGene.to));
 	}
 
 
@@ -1526,7 +1512,7 @@ class Population {
          * @param to Neuron receiving input
          * @return 2 new genes connecting the neurons to a hidden neuron
          */
-        public Gene innovateNode(int from, int to) {
+        public Gene[] innovateNode(int from, int to, double weight) {
             Integer[] key = new Integer[]{from, to};
             if (!nodeInnovations.containsKey(key)) {
                 int hiddenNeuron = getNewNeuronId();
@@ -1535,7 +1521,13 @@ class Population {
                         new Gene(getNewInnovationId(), hiddenNeuron, to),
                 });
             }
-            return (new Gene(linkInnovations.get(key))).mutateWeight();
+            Gene[] toCopy = nodeInnovations.get(key);
+            Gene[] newGenes = new Gene[2];
+            newGenes[0] = (new Gene(toCopy[0]));
+            newGenes[0].weight = 1.0;
+            newGenes[1] = (new Gene(toCopy[1]));
+            newGenes[1].weight = weight;
+            return newGenes;
         }
 
         /**

@@ -523,12 +523,16 @@ class Chromosome implements Comparable<Chromosome> {
             return this;
         }
         randomNumber -= WEIGHT_MUTATION_CHANCE;
-		if(randomNumber < DISABLE_MUTATION_CHANCE) {
+		if(randomNumber < DISABLE_MUTATION_CHANCE)
+		{
 			mutateGeneToggle(true);
+			return this;
 		}
 		randomNumber -= DISABLE_MUTATION_CHANCE;
-		if(randomNumber < ENABLE_MUTATION_CHANCE) {
+		if(randomNumber < ENABLE_MUTATION_CHANCE)
+		{
 			mutateGeneToggle(false);
+			return this;
 		}
 		randomNumber -= ENABLE_MUTATION_CHANCE;
 

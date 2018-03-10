@@ -185,6 +185,12 @@ class Species {
      * perform relevant computations
      */
     public void confirmSpecies() {
+        // Check if there's any chromosomes in this species
+        if (chromosomes.isEmpty()) {
+            stagnation++;
+            averageFitness = 0;
+            return;
+        }
         // Check for fitness improvement
         double newBestFitness = Collections.max(chromosomes).getFitness();
         if (bestFitness > newBestFitness) {
@@ -1370,22 +1376,13 @@ class Population {
                         c.getId()));
             }
         }
-        LOGGER.fine(String.format("Pruning extinct species"));
-        Species s;
-        for (Iterator<Species> it = species.iterator(); it.hasNext();) {
-            s = it.next();
-            if (s.size() <= 0) {
-                LOGGER.finer(String.format("S%d is extinct", s.getId()));
-                it.remove();
-            }
-        }
         // Species final computation
         LOGGER.fine(String.format("All species allocated, calculating species fitness"));
-        for (Species sp: species)
-            sp.confirmSpecies();
+        for (Species s: species)
+            s.confirmSpecies();
         LOGGER.fine(String.format("Culling stagnant species"));
         for (Iterator<Species> it = species.iterator(); it.hasNext();) {
-            s = it.next();
+            Species s = it.next();
             if (s.getStagnation() >= MAXIMUM_STAGNATION) {
                 LOGGER.finer(String.format("S%d is stagnant", s.getId()));
                 it.remove();
@@ -1405,8 +1402,12 @@ class Population {
             species.get(0).setAllocatedOffsprings(POPULATION_SIZE);
             return;
         }
-        for (Species s: species)
-            s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
+        for (Species s: species) {
+            if (s.size() == 0)
+                s.setAllocatedOffsprings(0);
+            else
+                s.setAllocatedOffsprings((int) (s.getAverageFitness() / averageSum * POPULATION_SIZE));
+        }
     }
 
     /**

@@ -1156,6 +1156,7 @@ class TetrisExperiment extends Experiment {
         this.params.DISJOINT_COEFFICIENT = 2.0;
         this.params.EXCESS_COEFFICIENT = 2.0;
         this.params.WEIGHT_DIFFERENCE_COEFFICIENT = 1.0;
+        this.params.MAXIMUM_STAGNATION = 8;
         super.setup();
     }
 
@@ -1362,17 +1363,28 @@ class Population {
 
     private void checkStagnation() {
         double newBestFitness = getFittestChromosome().getFitness();
-        if (getFittestChromosome().getFitness() > bestFitness) {
+        if (newBestFitness > bestFitness) {
             stagnation = 0;
-            bestFitness = getFittestChromosome().getFitness();
+            bestFitness = newBestFitness;
             return;
         } else {
             stagnation++;
         }
         if (stagnation > MAXIMUM_STAGNATION) {
             LOGGER.info(String.format("Population has stagnated, salting the earth"));
+            stagnation = 0;
             Collections.sort(chromosomes, Collections.reverseOrder());
-            chromosomes = chromosomes.subList(0, 2);
+            Chromosome parent1 = chromosomes.get(0);
+            Chromosome parent2 = chromosomes.get(1);
+            chromosomes.clear();
+            chromosomes.add(parent1);
+            chromosomes.add(parent2);
+            LOGGER.info(String.format("Repopulating the population"));
+            while (chromosomes.size() < POPULATION_SIZE)
+                chromosomes.add(parent1.breedWith(parent2));
+            LOGGER.info(String.format("Population Size: %d", chromosomes.size()));
+            LOGGER.info(String.format("Reevaluating fitness"));
+            evaluateFitness();
         }
     }
 

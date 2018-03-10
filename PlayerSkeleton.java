@@ -1152,9 +1152,12 @@ class TetrisExperiment extends Experiment {
         this.params.GENERATION_LIMIT = 1000;
         this.params.POPULATION_SIZE = 150;
         this.params.FITNESS_EVALUATIONS = 100;
-        this.params.COMPATIBILITY_THRESHOLD = 5;
-        this.params.TARGET_SPECIES = 20;
+        this.params.COMPATIBILITY_THRESHOLD = 4.0;
+        this.params.TARGET_SPECIES = 10;
         this.params.COMPAT_MOD = 0.3;
+        this.params.DISJOINT_COEFFICIENT = 2.0;
+        this.params.EXCESS_COEFFICIENT = 2.0;
+        this.params.WEIGHT_DIFFERENCE_COEFFICIENT = 1.0;
         super.setup();
     }
 
@@ -1414,10 +1417,19 @@ class Population {
      * Change the compatibility threshold depending on number of species
      */
     private void dynamicThresholding() {
-        if (species.size() < TARGET_SPECIES)
+        long nonEmptySpecies = species.stream().filter(s -> s.size() > 0).count();
+        if (nonEmptySpecies < TARGET_SPECIES) {
             Species.COMPATIBILITY_THRESHOLD -= COMPAT_MOD;
-        else if (species.size() > TARGET_SPECIES)
+            if (Species.COMPATIBILITY_THRESHOLD < COMPAT_MOD)
+                Species.COMPATIBILITY_THRESHOLD = COMPAT_MOD;
+            LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
+                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+        }
+        else if (nonEmptySpecies > TARGET_SPECIES) {
             Species.COMPATIBILITY_THRESHOLD += COMPAT_MOD;
+            LOGGER.info(String.format("There are %d species, increasing threshold to %f",
+                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+        }
     }
 
     /**

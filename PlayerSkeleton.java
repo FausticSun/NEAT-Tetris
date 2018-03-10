@@ -207,6 +207,11 @@ class Species {
         return stagnation;
     }
 
+    public void resetStagnation() {
+        this.stagnation = 0;
+        this.bestFitness = 0;
+    }
+
     public double getAverageFitness() {
         return averageFitness;
     }
@@ -1372,7 +1377,12 @@ class Population {
         }
         if (stagnation > MAXIMUM_STAGNATION) {
             LOGGER.info(String.format("Population has stagnated, salting the earth"));
+            // Reset stagnation on population and all species
             stagnation = 0;
+            bestFitness = 0;
+            for (Species s: species) {
+                s.resetStagnation();
+            }
             Collections.sort(chromosomes, Collections.reverseOrder());
             Chromosome parent1 = chromosomes.get(0);
             Chromosome parent2 = chromosomes.get(1);

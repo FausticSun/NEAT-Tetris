@@ -1446,7 +1446,7 @@ class Population {
         for (Species s: species) {
             if (s.size() == 0)
                 s.setAllocatedOffsprings(0);
-            else if (s.size() == 1)
+            else if (s.getAverageFitness() <= 0)
 				s.setAllocatedOffsprings(POPULATION_SIZE);
 			else
 				s.setAllocatedOffsprings((int) (s.getAverageFitness() / averageSum * POPULATION_SIZE));

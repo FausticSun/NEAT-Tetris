@@ -243,8 +243,6 @@ class NeuralNet {
 	 */
 	public NeuralNet(Chromosome chromosome) {
 		this.chromosome = chromosome;
-        LOGGER.fine(String.format("Creating neural network for C%d of size %d",
-                chromosome.getId(), chromosome.getNeuronCount()));
 		// Create Neurons
 		neurons = new ArrayList<>();
         neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
@@ -1258,6 +1256,8 @@ class Population {
     private int chromosomeCount;
     private int speciesCount;
     private int generation;
+    private int stagnation;
+    private double bestFitness;
     private Innovator innovator;
     private List<Chromosome> chromosomes;
     private List<Species> species;
@@ -1273,6 +1273,8 @@ class Population {
         this.innovator = new Innovator(DEFAULT_NETWORK_SIZE);
         this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
         this.generation = 0;
+        this.stagnation = 0;
+        this.bestFitness = 0.0;
         this.populate(
                 createDefaultChromosome(chromosomeBlueprintCreator.get()));
         this.evaluateFitness();
@@ -1341,6 +1343,7 @@ class Population {
         }
         LOGGER.info(String.format("Population Size: %d", chromosomes.size()));
         evaluateFitness();
+        checkStagnation();
         allocateChromosomesToSpecies();
         LOGGER.fine(String.format("Allocate offsprings to species"));
         allocateOffsprings();
@@ -1355,6 +1358,22 @@ class Population {
         ForkJoinPool.commonPool().invoke(
                 new EvaluatePopulationFitnessTask(chromosomes, chromosomeFitnessEvaluator));
         LOGGER.info(String.format("Population max fitness: %f", Collections.max(chromosomes).getFitness()));
+    }
+
+    private void checkStagnation() {
+        double newBestFitness = getFittestChromosome().getFitness();
+        if (getFittestChromosome().getFitness() > bestFitness) {
+            stagnation = 0;
+            bestFitness = getFittestChromosome().getFitness();
+            return;
+        } else {
+            stagnation++;
+        }
+        if (stagnation > MAXIMUM_STAGNATION) {
+            LOGGER.info(String.format("Population has stagnated, salting the earth"));
+            Collections.sort(chromosomes, Collections.reverseOrder());
+            chromosomes = chromosomes.subList(0, 2);
+        }
     }
 
     /**

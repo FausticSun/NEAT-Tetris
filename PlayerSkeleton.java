@@ -523,6 +523,18 @@ class Chromosome implements Comparable<Chromosome> {
             return this;
         }
         randomNumber -= WEIGHT_MUTATION_CHANCE;
+		if(randomNumber < DISABLE_MUTATION_CHANCE)
+		{
+			mutateGeneToggle(true);
+			return this;
+		}
+		randomNumber -= DISABLE_MUTATION_CHANCE;
+		if(randomNumber < ENABLE_MUTATION_CHANCE)
+		{
+			mutateGeneToggle(false);
+			return this;
+		}
+		randomNumber -= ENABLE_MUTATION_CHANCE;
 
 		return this;
 	}
@@ -614,6 +626,20 @@ class Chromosome implements Comparable<Chromosome> {
 	public void mutateGeneWeight() {
         genes.get((new Random()).nextInt(genes.size())).mutateWeight();
     }
+	
+	/**
+	 * Performs a mutation that toggles whether a gene is enabled or not.
+	 * @param enableRequirement The selected gene is guaranteed to be one where isEnable == enableRequirement.
+	 */
+	public void mutateGeneToggle(boolean enableRequirement) {
+		Object[] o = genes.stream()
+				.filter(gene -> gene.isEnabled == enableRequirement)
+				.toArray();
+		if(o.length > 0) {
+			int selectedGeneIndex = (new Random()).nextInt(o.length);
+			((Gene) o[selectedGeneIndex]).mutateToggle();
+		}
+	}
 
     /**
      * Perform a dfs from from to to
@@ -796,6 +822,15 @@ class Gene implements Comparable<Gene>{
         isEnabled = true;
         return this;
     }
+	
+	/**
+	 * mutatess by enable or disabling this link, as appropriate
+	 * @return itself
+	 */
+	public Gene mutateToggle() {
+    	isEnabled = !isEnabled;
+    	return this;
+	}
 
     /**
      * mutates by changing weight

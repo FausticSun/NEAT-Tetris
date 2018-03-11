@@ -62,6 +62,7 @@ public class PlayerSkeleton {
 }
 
 class Species {
+    private static final Logger LOGGER = Logger.getLogger( Species.class.getName() );
     public static double CROSSOVER_CHANCE;
     public static double COMPATIBILITY_THRESHOLD;
     public static double SURVIVAL_THRESHOLD;
@@ -123,6 +124,7 @@ class Species {
 			return averageFitness = 0;
 		return averageFitness = chromosomes.stream()
                 .mapToDouble(Chromosome::getFitness)
+                .map(f -> f / chromosomes.size())
                 .sum() / chromosomes.size();
 	}
 
@@ -155,7 +157,10 @@ class Species {
      * @return True if compatible, False otherwise
      */
 	public boolean compatibleWith(Chromosome c) {
-        return representative.distanceFrom(c) < COMPATIBILITY_THRESHOLD;
+	    double distance = representative.distanceFrom(c);
+	    LOGGER.finest(String.format("C%d is %f away from S%d with threshold %f",
+                c.getId(), distance, this.id, Species.COMPATIBILITY_THRESHOLD));
+        return distance < COMPATIBILITY_THRESHOLD;
     }
 
     /**
@@ -180,6 +185,12 @@ class Species {
      * perform relevant computations
      */
     public void confirmSpecies() {
+        // Check if there's any chromosomes in this species
+        if (chromosomes.isEmpty()) {
+            stagnation++;
+            averageFitness = 0;
+            return;
+        }
         // Check for fitness improvement
         double newBestFitness = Collections.max(chromosomes).getFitness();
         if (bestFitness > newBestFitness) {
@@ -190,6 +201,15 @@ class Species {
         }
         // Compute average fitness
         averageFitness = computeAverageFitness();
+    }
+
+    public int getStagnation() {
+        return stagnation;
+    }
+
+    public void resetStagnation() {
+        this.stagnation = 0;
+        this.bestFitness = 0;
     }
 
     public double getAverageFitness() {
@@ -228,8 +248,6 @@ class NeuralNet {
 	 */
 	public NeuralNet(Chromosome chromosome) {
 		this.chromosome = chromosome;
-        LOGGER.fine(String.format("Creating neural network for C%d of size %d",
-                chromosome.getId(), chromosome.getNeuronCount()));
 		// Create Neurons
 		neurons = new ArrayList<>();
         neurons.add(new Neuron(ActivationType.BIAS)); // Bias Neurons
@@ -465,29 +483,48 @@ class Chromosome implements Comparable<Chromosome> {
 			return other.breedWith(this);
 
         LOGGER.finer(String.format("Breeding C%d with C%d", this.id, other.id));
-        // Compare the parents
-        int[] structuralDifferences = calculateStructuralDifferences(other);
-
 		// Clone child from fitter parent
 		Chromosome child = new Chromosome(this);
 
 		// Randomly replace same genes from weaker parent
         Collections.sort(child.genes);
         Collections.sort(other.genes);
-        for (int i=0; i<structuralDifferences[SAME]; i++) {
-            if (Math.random() < 0.5) {
-                child.genes.remove(i);
-                child.genes.add(i, new Gene(other.genes.get(i)));
+        ListIterator<Gene> childIt = child.genes.listIterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene childGene = childIt.next();
+        Gene otherGene = otherIt.next();
+        while (childGene != null && otherGene != null) {
+            if (childGene.id == otherGene.id) {
+                // Same gene, randomly replace child gene with other gene
+                if (Math.random() < 0.5)
+                    childIt.set(new Gene(otherGene));
+                childGene = childIt.hasNext() ? childIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (childGene.id > otherGene.id) {
+                // Disjoint gene in other, add to child if fitness is the same
+                if (this.getFitness() == other.getFitness()) {
+                    childIt.previous();
+                    childIt.add(new Gene(otherGene));
+                    childIt.next();
+                }
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (childGene.id < otherGene.id) {
+                // Disjoint gene in child, do nothing
+                childGene = childIt.hasNext() ? childIt.next() : null;
             }
         }
+        // Add excess genes if fitness is the same and there are excess genes
+        if (this.getFitness() == other.getFitness() && otherGene != null) {
+            childIt.add(otherGene);
+            while (otherIt.hasNext())
+                childIt.add(otherIt.next());
+        }
 
-        // Add excess and disjoint genes from weaker parent if
-        // fitness is the same
-        if (this.getFitness() == other.getFitness()) {
-            for (int i=structuralDifferences[SAME]; i<other.genes.size(); i++) {
-                child.genes.add(new Gene(other.genes.get(i)));
-            }
-            child.neuronCount = Math.max(child.neuronCount, other.neuronCount);
+        // Manually recalcuate neuronCount
+        child.neuronCount = 0;
+        for (Gene g: child.genes) {
+            child.neuronCount = Math.max(child.neuronCount, g.from + 1);
+            child.neuronCount = Math.max(child.neuronCount, g.to + 1);
         }
 
 		// Mutate child
@@ -642,6 +679,15 @@ class Chromosome implements Comparable<Chromosome> {
 	}
 
     /**
+     * Mutate all gene weights
+     */
+    public Chromosome mutateAllWeights() {
+	    for (Gene g: genes)
+	        g.mutateWeight();
+	    return this;
+    }
+
+    /**
      * Perform a dfs from from to to
      * @param from The node to start from
      * @param to The node to end at
@@ -678,12 +724,28 @@ class Chromosome implements Comparable<Chromosome> {
 		double distance = 0;
 		double NormalizeValue = Math.max(genes.size(), other.genes.size());
 		int[] structuralDifference = calculateStructuralDifferences(other);
-        double averageWeightDifferences = 0;
-        for (int i=0; i<structuralDifference[SAME]; i++) {
-            averageWeightDifferences += this.genes.get(i).weight;
-            averageWeightDifferences -= other.genes.get(i).weight;
+
+		// Compute average weight difference
+		double averageWeightDifferences = 0;
+        Collections.sort(this.genes);
+        Collections.sort(other.genes);
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene thisGene = thisIt.next();
+        Gene otherGene = otherIt.next();
+        while (thisGene != null && otherGene != null) {
+            if (thisGene.id == otherGene.id) {
+                averageWeightDifferences += Math.abs(thisGene.weight - otherGene.weight);
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id > otherGene.id) {
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id < otherGene.id) {
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+            }
         }
         averageWeightDifferences = averageWeightDifferences / structuralDifference[SAME];
+
 		distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
 		distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
 		distance += WEIGHT_DIFFERENCE_COEFFICIENT * averageWeightDifferences;
@@ -698,40 +760,47 @@ class Chromosome implements Comparable<Chromosome> {
      */
 	public int[] calculateStructuralDifferences(Chromosome other) {
 	    int[] structuralDiff = new int[3];
-        Collections.sort(this.genes);
+	    // Sort both genes list
+	    Collections.sort(this.genes);
         Collections.sort(other.genes);
-        // Get number of same genes
-        Iterator<Gene> thisIt = this.genes.iterator();
-        Iterator<Gene> otherIt = other.genes.iterator();
-        while (thisIt.hasNext() && otherIt.hasNext()) {
-            if(thisIt.next().id == otherIt.next().id)
-                structuralDiff[SAME]++;
-            else
-                break;
-        }
+
         // Get number of excess genes
         int thisMaxId = Collections.max(this.genes).id;
         int otherMaxId = Collections.max(other.genes).id;
-        // There are no excess and disjoint
-        if (thisMaxId == otherMaxId)
-            return structuralDiff;
+        // Get the smaller highest gene id
         int minMaxId = Math.min(thisMaxId, otherMaxId);
-        // Compute excess genes
-        ListIterator<Gene> listIt;
-        if (thisMaxId > otherMaxId) {
-            listIt = this.genes.listIterator(this.genes.size());
-        } else {
-            listIt = other.genes.listIterator(other.genes.size());
+        // There are excess genes, compute number
+        if (thisMaxId != otherMaxId) {
+            ListIterator<Gene> listIt;
+            if (thisMaxId > otherMaxId) {
+                listIt = this.genes.listIterator(this.genes.size());
+            } else {
+                listIt = other.genes.listIterator(other.genes.size());
+            }
+            while (listIt.previous().id > minMaxId) {
+                structuralDiff[EXCESS]++;
+            }
         }
-        while (listIt.previous().id > minMaxId) {
-            structuralDiff[EXCESS]++;
-        }
-        // Compute disjoint genes
-        while (thisIt.hasNext() && thisIt.next().id <= minMaxId)
-            structuralDiff[DISJOINT]++;
-        while (otherIt.hasNext() && otherIt.next().id <= minMaxId)
-            structuralDiff[DISJOINT]++;
 
+        // Compute number of same and disjoint genes
+        Iterator<Gene> thisIt = this.genes.iterator();
+        Iterator<Gene> otherIt = other.genes.iterator();
+        Gene thisGene = thisIt.next();
+        Gene otherGene = otherIt.next();
+        while (thisGene != null && thisGene.id <= minMaxId &&
+                otherGene != null && otherGene.id <= minMaxId) {
+            if (thisGene.id == otherGene.id) {
+                structuralDiff[SAME]++;
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id > otherGene.id) {
+                structuralDiff[DISJOINT]++;
+                otherGene = otherIt.hasNext() ? otherIt.next() : null;
+            } else if (thisGene.id < otherGene.id) {
+                structuralDiff[DISJOINT]++;
+                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+            }
+        }
         return structuralDiff;
     }
 
@@ -983,6 +1052,8 @@ abstract class Experiment {
         Population.MAXIMUM_STAGNATION = params.MAXIMUM_STAGNATION;
         Population.POPULATION_SIZE = params.POPULATION_SIZE;
         Population.DEFAULT_NETWORK_SIZE = params.DEFAULT_NETWORK_SIZE;
+        Population.TARGET_SPECIES = params.TARGET_SPECIES;
+        Population.COMPAT_MOD = params.COMPAT_MOD;
         Chromosome.WEIGHT_MUTATION_CHANCE = params.WEIGHT_MUTATION_CHANCE;
         Chromosome.NODE_MUTATION_CHANCE = params.NODE_MUTATION_CHANCE;
         Chromosome.LINK_MUTATION_CHANCE = params.LINK_MUTATION_CHANCE;
@@ -1045,10 +1116,12 @@ abstract class Experiment {
         public double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
         public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
         public double CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
-        public double COMPATIBILITY_THRESHOLD = 10; // Threshold for measuring species compatibility
+        public double COMPATIBILITY_THRESHOLD = 0.1; // Starting threshold for measuring species compatibility
         public double DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
         public double EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
         public double WEIGHT_DIFFERENCE_COEFFICIENT = 3; // Coefficient for average weight difference
+        public int TARGET_SPECIES = 20; // No. of species to target using dynamic thresholding
+        public double COMPAT_MOD = 0.3; // Amount to tweak compatibility threshold by
 
         public Parameters(int inputSize, int outputSize, int hiddenSize) {
             this.INPUT_SIZE = inputSize;
@@ -1114,10 +1187,16 @@ class TetrisExperiment extends Experiment {
     public TetrisExperiment() {
         this.params = new Parameters(inputSize, outputSize, hiddenSize);
         this.params.FITNESS_LIMIT = 1000;
-        this.params.GENERATION_LIMIT = 10000;
-        this.params.POPULATION_SIZE = 100;
-        this.params.FITNESS_EVALUATIONS = 10;
-        this.params.COMPATIBILITY_THRESHOLD = 0.1;
+        this.params.GENERATION_LIMIT = 1000;
+        this.params.POPULATION_SIZE = 150;
+        this.params.FITNESS_EVALUATIONS = 100;
+        this.params.COMPATIBILITY_THRESHOLD = 4.0;
+        this.params.TARGET_SPECIES = 10;
+        this.params.COMPAT_MOD = 0.3;
+        this.params.DISJOINT_COEFFICIENT = 2.0;
+        this.params.EXCESS_COEFFICIENT = 2.0;
+        this.params.WEIGHT_DIFFERENCE_COEFFICIENT = 1.0;
+        this.params.MAXIMUM_STAGNATION = 8;
         super.setup();
     }
 
@@ -1213,9 +1292,13 @@ class Population {
     public static int MAXIMUM_STAGNATION;
     public static int POPULATION_SIZE;
     public static int DEFAULT_NETWORK_SIZE;
+    public static int TARGET_SPECIES;
+    public static double COMPAT_MOD;
     private int chromosomeCount;
     private int speciesCount;
     private int generation;
+    private int stagnation;
+    private double bestFitness;
     private Innovator innovator;
     private List<Chromosome> chromosomes;
     private List<Species> species;
@@ -1231,11 +1314,15 @@ class Population {
         this.innovator = new Innovator(DEFAULT_NETWORK_SIZE);
         this.chromosomeFitnessEvaluator = chromosomeFitnessEvaluator;
         this.generation = 0;
+        this.stagnation = 0;
+        this.bestFitness = 0.0;
         this.populate(
                 createDefaultChromosome(chromosomeBlueprintCreator.get()));
         this.evaluateFitness();
-        this.allocateChromosomesToSpecies();
-		this.allocateOffsprings();
+        allocateChromosomesToSpecies();
+        LOGGER.fine(String.format("Allocate offsprings to species"));
+        allocateOffsprings();
+        dynamicThresholding();
     }
 
     /**
@@ -1244,7 +1331,7 @@ class Population {
      */
     private void populate(Chromosome base) {
         for (int i=0; i<POPULATION_SIZE; i++)
-            chromosomes.add((new Chromosome(base)).mutate());
+            chromosomes.add((new Chromosome(base)).mutateAllWeights().mutate());
     }
 
     /**
@@ -1295,12 +1382,13 @@ class Population {
             chromosomes.addAll(s.produceAllocatedOffsprings());
             s.clear();
         }
+        LOGGER.info(String.format("Population Size: %d", chromosomes.size()));
         evaluateFitness();
+        checkStagnation();
         allocateChromosomesToSpecies();
-        LOGGER.fine(String.format("Pruning extinct species"));
-        species.removeIf(s -> s.size() <= 0);
         LOGGER.fine(String.format("Allocate offsprings to species"));
         allocateOffsprings();
+        dynamicThresholding();
     }
 
     /**
@@ -1311,6 +1399,38 @@ class Population {
         ForkJoinPool.commonPool().invoke(
                 new EvaluatePopulationFitnessTask(chromosomes, chromosomeFitnessEvaluator));
         LOGGER.info(String.format("Population max fitness: %f", Collections.max(chromosomes).getFitness()));
+    }
+
+    private void checkStagnation() {
+        double newBestFitness = getFittestChromosome().getFitness();
+        if (newBestFitness > bestFitness) {
+            stagnation = 0;
+            bestFitness = newBestFitness;
+            return;
+        } else {
+            stagnation++;
+        }
+        if (stagnation > MAXIMUM_STAGNATION) {
+            LOGGER.info(String.format("Population has stagnated, salting the earth"));
+            // Reset stagnation on population and all species
+            stagnation = 0;
+            bestFitness = 0;
+            for (Species s: species) {
+                s.resetStagnation();
+            }
+            Collections.sort(chromosomes, Collections.reverseOrder());
+            Chromosome parent1 = chromosomes.get(0);
+            Chromosome parent2 = chromosomes.get(1);
+            chromosomes.clear();
+            chromosomes.add(parent1);
+            chromosomes.add(parent2);
+            LOGGER.info(String.format("Repopulating the population"));
+            while (chromosomes.size() < POPULATION_SIZE)
+                chromosomes.add(parent1.breedWith(parent2));
+            LOGGER.info(String.format("Population Size: %d", chromosomes.size()));
+            LOGGER.info(String.format("Reevaluating fitness"));
+            evaluateFitness();
+        }
     }
 
     /**
@@ -1336,9 +1456,18 @@ class Population {
             }
         }
         // Species final computation
-        LOGGER.fine(String.format("All species allocated, calcuating species fitness"));
+        LOGGER.fine(String.format("All species allocated, calculating species fitness"));
         for (Species s: species)
             s.confirmSpecies();
+        LOGGER.fine(String.format("Culling stagnant species"));
+        for (Iterator<Species> it = species.iterator(); it.hasNext();) {
+            Species s = it.next();
+            if (s.getStagnation() >= MAXIMUM_STAGNATION) {
+                LOGGER.finer(String.format("S%d is stagnant", s.getId()));
+                it.remove();
+            }
+        }
+        LOGGER.info(String.format("Total no. of species: %d", species.size()));
     }
 
     /**
@@ -1348,8 +1477,34 @@ class Population {
         double averageSum = species.stream()
                 .mapToDouble(Species::getAverageFitness)
                 .sum();
-        for (Species s: species)
-            s.setAllocatedOffsprings((int)(s.getAverageFitness()/averageSum*POPULATION_SIZE));
+        
+        for (Species s: species) {
+            if (s.size() == 0)
+                s.setAllocatedOffsprings(0);
+            else if (s.getAverageFitness() <= 0)
+				s.setAllocatedOffsprings(POPULATION_SIZE);
+			else
+				s.setAllocatedOffsprings((int) (s.getAverageFitness() / averageSum * POPULATION_SIZE));
+        }
+    }
+
+    /**
+     * Change the compatibility threshold depending on number of species
+     */
+    private void dynamicThresholding() {
+        long nonEmptySpecies = species.stream().filter(s -> s.size() > 0).count();
+        if (nonEmptySpecies < TARGET_SPECIES) {
+            Species.COMPATIBILITY_THRESHOLD -= COMPAT_MOD;
+            if (Species.COMPATIBILITY_THRESHOLD < COMPAT_MOD)
+                Species.COMPATIBILITY_THRESHOLD = COMPAT_MOD;
+            LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
+                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+        }
+        else if (nonEmptySpecies > TARGET_SPECIES) {
+            Species.COMPATIBILITY_THRESHOLD += COMPAT_MOD;
+            LOGGER.info(String.format("There are %d species, increasing threshold to %f",
+                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+        }
     }
 
     /**

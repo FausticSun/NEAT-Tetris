@@ -1493,18 +1493,27 @@ class Population {
      */
     private void dynamicThresholding() {
         long nonEmptySpecies = species.stream().filter(s -> s.size() > 0).count();
-        if (nonEmptySpecies < TARGET_SPECIES) {
-            Species.COMPATIBILITY_THRESHOLD -= COMPAT_MOD;
-            if (Species.COMPATIBILITY_THRESHOLD < COMPAT_MOD)
-                Species.COMPATIBILITY_THRESHOLD = COMPAT_MOD;
-            LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
-                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
-        }
-        else if (nonEmptySpecies > TARGET_SPECIES) {
-            Species.COMPATIBILITY_THRESHOLD += COMPAT_MOD;
-            LOGGER.info(String.format("There are %d species, increasing threshold to %f",
-                    nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
-        }
+        
+        if(Species.COMPATIBILITY_THRESHOLD <= COMPAT_MOD) {
+			double percentageChange = (nonEmptySpecies - TARGET_SPECIES * 1.0)/TARGET_SPECIES;
+			double actualChange = Species.COMPATIBILITY_THRESHOLD * percentageChange;
+			Species.COMPATIBILITY_THRESHOLD += actualChange;
+			LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
+					nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+		} else {
+			if (nonEmptySpecies < TARGET_SPECIES) {
+				Species.COMPATIBILITY_THRESHOLD -= COMPAT_MOD;
+				if (Species.COMPATIBILITY_THRESHOLD < COMPAT_MOD)
+					Species.COMPATIBILITY_THRESHOLD = COMPAT_MOD;
+				LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
+						nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+			}
+			else if (nonEmptySpecies > TARGET_SPECIES) {
+				Species.COMPATIBILITY_THRESHOLD += COMPAT_MOD;
+				LOGGER.info(String.format("There are %d species, increasing threshold to %f",
+						nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
+			}
+		}
     }
 
     /**

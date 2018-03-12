@@ -1443,6 +1443,7 @@ class Population {
      */
     private void allocateChromosomesToSpecies() {
         LOGGER.fine(String.format("Allocating chromosomes into species"));
+        /*
         CompletableFuture<List<Chromosome>> mainFuture = CompletableFuture.completedFuture(new LinkedList<>());
         for (Chromosome c : chromosomes) {
         	mainFuture.thenCombine(tryAllocateChromosomes(c), (chromosomesList, chromosome) -> {
@@ -1451,7 +1452,22 @@ class Population {
 				}
 				return chromosomesList;
 			});
+		}*/
+        List<Chromosome> unprocessedChromosomes = new LinkedList<>();
+        for(Chromosome c : chromosomes) {
+        	boolean found = false;
+        	for(Species s : species) {
+        		if(s.compatibleWith(c)) {
+        			s.add(c);
+        			found = true;
+        			break;
+				}
+			}
+			if(!found) {
+        		unprocessedChromosomes.add(c);
+			}
 		}
+		/*
 		mainFuture = attemptToAllocateSpecies(mainFuture.thenApply(chromosomesList -> {
 			LOGGER.fine(String.format("All species saved, Unknown species size: " + chromosomesList.size()));
 			return chromosomesList;
@@ -1461,11 +1477,30 @@ class Population {
         		throw new RuntimeException("AHHHHHHHHHHHHHHHHHHHHH WHYYYYYYYYYYYYYYYYY");
 			}
 			return null;
-		});
+		});*/
         
         //The longer we can delay running this line, the better.
-        mainFuture.join();
-        // Species final computation
+        //List<Chromosome> unprocessedChromosomes = mainFuture.join();
+		LOGGER.fine(String.format("All species saved, Unknown species size: " + unprocessedChromosomes.size()));
+		
+		while (unprocessedChromosomes.size() > 0) {
+			Species s = new Species(this, unprocessedChromosomes.get(0));
+			species.add(s);
+			unprocessedChromosomes.remove(0);
+			for (int i = unprocessedChromosomes.size() - 1; i >= 0; i--) {
+				System.out.println(i);
+				Chromosome c = unprocessedChromosomes.get(i);
+				if(s.compatibleWith(c)) {
+					s.add(c);
+					LOGGER.finest(String.format("Adding C%d to S%d",
+							c.getId(),
+							s.getId()));
+					unprocessedChromosomes.remove(i);
+				}
+			}
+		}
+	
+		// Species final computation
         LOGGER.fine(String.format("All species allocated, calculating species fitness"));
         for (Species s: species)
             s.confirmSpecies();
@@ -1562,7 +1597,7 @@ class Population {
 			double percentageChange = (nonEmptySpecies - TARGET_SPECIES * 1.0)/TARGET_SPECIES;
 			double actualChange = Species.COMPATIBILITY_THRESHOLD * percentageChange;
 			Species.COMPATIBILITY_THRESHOLD += actualChange;
-			LOGGER.info(String.format("There are %d species, decreasing threshold to %f",
+			LOGGER.info(String.format("There are %d species, changing threshold to %f",
 					nonEmptySpecies, Species.COMPATIBILITY_THRESHOLD));
 		} else {
 			if (nonEmptySpecies < TARGET_SPECIES) {

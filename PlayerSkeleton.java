@@ -1,8 +1,13 @@
+import com.sun.org.apache.xpath.internal.operations.Bool;
+
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.logging.Logger;
 import java.lang.StringBuilder;
+
+import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 public class PlayerSkeleton {
     private static final Logger LOGGER = Logger.getLogger( PlayerSkeleton.class.getName() );
@@ -1438,23 +1443,28 @@ class Population {
      */
     private void allocateChromosomesToSpecies() {
         LOGGER.fine(String.format("Allocating chromosomes into species"));
-        for (Chromosome c: chromosomes) {
-            found: {
-                for (Species s: species) {
-                    if (s.compatibleWith(c)) {
-                        LOGGER.finest(String.format("Adding C%d to S%d",
-                                c.getId(),
-                                s.getId()));
-                        s.add(c);
-                        break found;
-                    }
-                }
-                species.add(new Species(this, c));
-                LOGGER.finer(String.format("Species not found, creating S%d with C%d as rep",
-                        species.get(species.size()-1).getId(),
-                        c.getId()));
-            }
-        }
+        CompletableFuture<List<Chromosome>> mainFuture = CompletableFuture.completedFuture(new LinkedList<>());
+        for (Chromosome c : chromosomes) {
+        	mainFuture.thenCombine(tryAllocateChromosomes(c), (chromosomesList, chromosome) -> {
+        		if(chromosome != null) {
+					chromosomesList.add(chromosome);
+				}
+				return chromosomesList;
+			});
+		}
+		mainFuture = attemptToAllocateSpecies(mainFuture.thenApply(chromosomesList -> {
+			LOGGER.fine(String.format("All species saved, Unknown species size: " + chromosomesList.size()));
+			return chromosomesList;
+		}));
+        mainFuture.thenCompose(chromosomesList -> {
+        	if(chromosomesList.size() != 0) {
+        		throw new RuntimeException("AHHHHHHHHHHHHHHHHHHHHH WHYYYYYYYYYYYYYYYYY");
+			}
+			return null;
+		});
+        
+        //The longer we can delay running this line, the better.
+        mainFuture.join();
         // Species final computation
         LOGGER.fine(String.format("All species allocated, calculating species fitness"));
         for (Species s: species)
@@ -1469,6 +1479,60 @@ class Population {
         }
         LOGGER.info(String.format("Total no. of species: %d", species.size()));
     }
+    
+    private CompletableFuture<Chromosome> tryAllocateChromosomes(Chromosome c) {
+		return CompletableFuture.supplyAsync(() -> {
+			for (Species s : species) {
+				if(s.compatibleWith(c)) {
+					//Copied and paste code: TODO: Potentially use singleTestSpecies instead?
+					s.add(c);
+					LOGGER.finest(String.format("Adding C%d to S%d",
+							c.getId(),
+							s.getId()));
+					return null;
+				}
+			}
+			return c;
+		});
+	}
+	
+	private CompletableFuture<Chromosome> singleTestSpecies(Chromosome c, Species s) {
+    	return CompletableFuture.supplyAsync(() -> {
+    		if(s.compatibleWith(c)) {
+    			s.add(c);
+				LOGGER.finest(String.format("Adding C%d to S%d",
+						c.getId(),
+						s.getId()));
+				return null;
+			}
+			return c;
+		});
+	}
+	
+	private CompletableFuture<List<Chromosome>> attemptToAllocateSpecies(CompletableFuture<List<Chromosome>> mainFuture) {
+    	return mainFuture.thenCompose(chromosomesList -> {
+    		if(chromosomesList.size() > 0) {
+				Species s = new Species(this, chromosomesList.get(0));
+				species.add(s);
+				chromosomesList.remove(0);
+				CompletableFuture<List<Chromosome>> newFuture = CompletableFuture.completedFuture(new ArrayList<>());
+				System.out.println("hi");
+				for(Chromosome c : chromosomesList) {
+					if(c == null) {
+						System.out.println("NANI???");
+					}
+					newFuture.thenCombine(singleTestSpecies(c, s), (chromosomesList2, chromosome) -> {
+						if(chromosome != null) {
+							chromosomesList2.add(chromosome);
+						}
+						return chromosomesList2;
+					});
+				}
+				return attemptToAllocateSpecies(newFuture);
+			}
+			return CompletableFuture.completedFuture(new ArrayList<>());
+		});
+	}
 
     /**
      * Allocate no. of offsprings allowed to each species

@@ -1,5 +1,3 @@
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
@@ -1488,7 +1486,7 @@ class Population {
 			species.add(s);
 			unprocessedChromosomes.remove(0);
 			for (int i = unprocessedChromosomes.size() - 1; i >= 0; i--) {
-				System.out.println(i);
+				//System.out.println(i);
 				Chromosome c = unprocessedChromosomes.get(i);
 				if(s.compatibleWith(c)) {
 					s.add(c);

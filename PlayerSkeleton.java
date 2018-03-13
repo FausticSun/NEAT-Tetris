@@ -724,35 +724,29 @@ class Chromosome implements Comparable<Chromosome> {
 	 * @return Distance from this chromosome to other chromosome
 	 */
 	public double distanceFrom(Chromosome other) {
-		double distance = 0;
-		double NormalizeValue = Math.max(genes.size(), other.genes.size());
-		int[] structuralDifference = calculateStructuralDifferences(other);
-
-		// Compute average weight difference
-		double averageWeightDifferences = 0;
-        Collections.sort(this.genes);
-        Collections.sort(other.genes);
-        Iterator<Gene> thisIt = this.genes.iterator();
-        Iterator<Gene> otherIt = other.genes.iterator();
-        Gene thisGene = thisIt.next();
-        Gene otherGene = otherIt.next();
-        while (thisGene != null && otherGene != null) {
-            if (thisGene.id == otherGene.id) {
-                averageWeightDifferences += Math.abs(thisGene.weight - otherGene.weight);
-                thisGene = thisIt.hasNext() ? thisIt.next() : null;
-                otherGene = otherIt.hasNext() ? otherIt.next() : null;
-            } else if (thisGene.id > otherGene.id) {
-                otherGene = otherIt.hasNext() ? otherIt.next() : null;
-            } else if (thisGene.id < otherGene.id) {
-                thisGene = thisIt.hasNext() ? thisIt.next() : null;
+        double NormalizeValue = Math.max(this.genes.size(), other.genes.size());
+        if (this.genes.isEmpty() || other.genes.isEmpty()) {
+            if (NormalizeValue == 0) {
+                return 0;
             }
+            return EXCESS_COEFFICIENT * calculateStructuralDifferences(other)[EXCESS] / NormalizeValue;
         }
-        averageWeightDifferences = averageWeightDifferences / structuralDifference[SAME];
+        double distance = 0;
+        int[] structuralDifference = calculateStructuralDifferences(other);
 
-		distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
-		distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
-		distance += WEIGHT_DIFFERENCE_COEFFICIENT * averageWeightDifferences;
-		return distance;
+        // Compute average weight difference of same genes
+        if (structuralDifference[SAME] != 0) {
+            double sumWeightDifference = this.genes.parallelStream()
+                    .mapToDouble(g -> Math.abs(g.weight -
+                            other.genes.stream()
+                                    .filter(o -> o.id == g.id)
+                                    .findFirst().orElse(g).weight))
+                    .sum();
+            distance += WEIGHT_DIFFERENCE_COEFFICIENT * sumWeightDifference / structuralDifference[SAME];
+        }
+        distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
+        distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
+        return distance;
 	}
 
     /**

@@ -756,50 +756,45 @@ class Chromosome implements Comparable<Chromosome> {
      * @return Number of same, excess and disjoint genes
      */
 	public int[] calculateStructuralDifferences(Chromosome other) {
-	    int[] structuralDiff = new int[3];
-	    // Sort both genes list
-	    Collections.sort(this.genes);
-        Collections.sort(other.genes);
+        int[] structuralDiff = new int[3];
+        // Check if either is empty
+        if (this.genes.isEmpty() || other.genes.isEmpty()) {
+            structuralDiff[EXCESS] = this.genes.size() + other.genes.size();
+            return structuralDiff;
+        }
 
-        // Get number of excess genes
+        // Get last innovation split
         int thisMaxId = Collections.max(this.genes).id;
         int otherMaxId = Collections.max(other.genes).id;
-        // Get the smaller highest gene id
         int minMaxId = Math.min(thisMaxId, otherMaxId);
-        // There are excess genes, compute number
-        if (thisMaxId != otherMaxId) {
-            ListIterator<Gene> listIt;
-            if (thisMaxId > otherMaxId) {
-                listIt = this.genes.listIterator(this.genes.size());
-            } else {
-                listIt = other.genes.listIterator(other.genes.size());
-            }
-            while (listIt.previous().id > minMaxId) {
-                structuralDiff[EXCESS]++;
-            }
-        }
-
-        // Compute number of same and disjoint genes
-        Iterator<Gene> thisIt = this.genes.iterator();
-        Iterator<Gene> otherIt = other.genes.iterator();
-        Gene thisGene = thisIt.next();
-        Gene otherGene = otherIt.next();
-        while (thisGene != null && thisGene.id <= minMaxId &&
-                otherGene != null && otherGene.id <= minMaxId) {
-            if (thisGene.id == otherGene.id) {
-                structuralDiff[SAME]++;
-                thisGene = thisIt.hasNext() ? thisIt.next() : null;
-                otherGene = otherIt.hasNext() ? otherIt.next() : null;
-            } else if (thisGene.id > otherGene.id) {
-                structuralDiff[DISJOINT]++;
-                otherGene = otherIt.hasNext() ? otherIt.next() : null;
-            } else if (thisGene.id < otherGene.id) {
-                structuralDiff[DISJOINT]++;
-                thisGene = thisIt.hasNext() ? thisIt.next() : null;
-            }
+        // Compute number of same genes
+        structuralDiff[SAME] = (int) this.genes.parallelStream()
+                .filter(s -> other.genes.stream()
+                        .anyMatch(o -> o.id == s.id))
+                .count();
+        // Compute number of disjoint genes
+        structuralDiff[DISJOINT] += (int) this.genes.parallelStream()
+                .filter(s -> other.genes.stream()
+                        .noneMatch(o -> o.id != s.id))
+                .filter(g -> g.id <= minMaxId)
+                .count();
+        structuralDiff[DISJOINT] += (int) other.genes.parallelStream()
+                .filter(s -> this.genes.stream()
+                        .noneMatch(o -> o.id != s.id))
+                .filter(g -> g.id <= minMaxId)
+                .count();
+        // Compute number of excess genes
+        if (thisMaxId > otherMaxId) {
+            structuralDiff[EXCESS] = (int) this.genes.stream()
+                    .filter(g -> g.id > minMaxId)
+                    .count();
+        } else {
+            structuralDiff[EXCESS] = (int) other.genes.stream()
+                    .filter(g -> g.id > minMaxId)
+                    .count();
         }
         return structuralDiff;
-    }
+	}
 
 	public double getFitness() {
 	    return this.fitness;

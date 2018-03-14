@@ -3,6 +3,8 @@ import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.logging.Logger;
 import java.lang.StringBuilder;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
@@ -418,11 +420,6 @@ class Chromosome implements Comparable<Chromosome> {
     public static double EXCESS_COEFFICIENT;
     public static double WEIGHT_DIFFERENCE_COEFFICIENT;
 
-    // Array indices for stucturalDiff
-    private static final int SAME = 0;
-    private static final int DISJOINT = 1;
-    private static final int EXCESS = 2;
-
 	private Population pop;
     private int neuronCount;
 	private List<Gene> genes;
@@ -723,78 +720,76 @@ class Chromosome implements Comparable<Chromosome> {
 	 *
 	 * @return Distance from this chromosome to other chromosome
 	 */
-	public double distanceFrom(Chromosome other) {
+    public double distanceFrom(Chromosome other) {
+        final int SAME = 0;
+        final int DISJOINT = 1;
+        final int EXCESS = 2;
+        // Calculate normalized value
         double NormalizeValue = Math.max(this.genes.size(), other.genes.size());
+        // Check if either chromosome is empty
         if (this.genes.isEmpty() || other.genes.isEmpty()) {
+            // Check if both chromosomes are emtpy
             if (NormalizeValue == 0) {
                 return 0;
             }
-            return EXCESS_COEFFICIENT * calculateStructuralDifferences(other)[EXCESS] / NormalizeValue;
+            return EXCESS_COEFFICIENT * (this.genes.size() + other.genes.size()) / NormalizeValue;
         }
+        // Initialize distance
         double distance = 0;
-        int[] structuralDifference = calculateStructuralDifferences(other);
-
-        // Compute average weight difference of same genes
-        if (structuralDifference[SAME] != 0) {
-            double sumWeightDifference = this.genes.parallelStream()
-                    .mapToDouble(g -> Math.abs(g.weight -
-                            other.genes.stream()
-                                    .filter(o -> o.id == g.id)
-                                    .findFirst().orElse(g).weight))
-                    .sum();
-            distance += WEIGHT_DIFFERENCE_COEFFICIENT * sumWeightDifference / structuralDifference[SAME];
-        }
-        distance += EXCESS_COEFFICIENT * structuralDifference[EXCESS] / NormalizeValue;
-        distance += DISJOINT_COEFFICIENT * structuralDifference[DISJOINT] / NormalizeValue;
-        return distance;
-	}
-
-    /**
-     * Compare this chromosome with other chromosome and determine
-     * the number of same, excess and disjoint genes
-     * @param other Chromosome to compare with
-     * @return Number of same, excess and disjoint genes
-     */
-	public int[] calculateStructuralDifferences(Chromosome other) {
-        int[] structuralDiff = new int[3];
-        // Check if either is empty
-        if (this.genes.isEmpty() || other.genes.isEmpty()) {
-            structuralDiff[EXCESS] = this.genes.size() + other.genes.size();
-            return structuralDiff;
-        }
-
-        // Get last innovation split
+        // Compute last innovation split
         int thisMaxId = Collections.max(this.genes).id;
         int otherMaxId = Collections.max(other.genes).id;
         int minMaxId = Math.min(thisMaxId, otherMaxId);
-        // Compute number of same genes
-        structuralDiff[SAME] = (int) this.genes.parallelStream()
-                .filter(s -> other.genes.stream()
-                        .anyMatch(o -> o.id == s.id))
-                .count();
-        // Compute number of disjoint genes
-        structuralDiff[DISJOINT] += (int) this.genes.parallelStream()
-                .filter(s -> other.genes.stream()
-                        .noneMatch(o -> o.id != s.id))
-                .filter(g -> g.id <= minMaxId)
-                .count();
-        structuralDiff[DISJOINT] += (int) other.genes.parallelStream()
-                .filter(s -> this.genes.stream()
-                        .noneMatch(o -> o.id != s.id))
-                .filter(g -> g.id <= minMaxId)
-                .count();
-        // Compute number of excess genes
-        if (thisMaxId > otherMaxId) {
-            structuralDiff[EXCESS] = (int) this.genes.stream()
-                    .filter(g -> g.id > minMaxId)
-                    .count();
-        } else {
-            structuralDiff[EXCESS] = (int) other.genes.stream()
-                    .filter(g -> g.id > minMaxId)
-                    .count();
+
+        // Partition to same, excess and disjoint
+        Function<Gene, Integer> thisGeneClassifier = (g) -> {
+            if (other.genes.parallelStream().anyMatch(o -> g.id == o.id)) {
+                return SAME;
+            }
+            if (g.id <= minMaxId) {
+                return DISJOINT;
+            } else {
+                return EXCESS;
+            }
+        };
+        Map<Integer, List<Gene>> thisGroupedGenes = this.genes.parallelStream()
+                .collect(Collectors.groupingBy(thisGeneClassifier));
+        Function<Gene, Integer> otherGeneClassifier = (g) -> {
+            if (thisGroupedGenes.get(SAME) != null &&
+                    thisGroupedGenes.get(SAME).parallelStream().anyMatch(o -> g.id == o.id)) {
+                return SAME;
+            }
+            if (g.id <= minMaxId) {
+                return DISJOINT;
+            } else {
+                return EXCESS;
+            }
+        };
+        Map<Integer, List<Gene>> otherGroupedGenes = this.genes.parallelStream()
+                .collect(Collectors.groupingBy(otherGeneClassifier));
+
+        // Compute sum of weight differences
+        double sumWeightDifference = 0;
+        if (thisGroupedGenes.get(SAME) != null) {
+            sumWeightDifference = IntStream.range(0, thisGroupedGenes.get(SAME).size())
+                    .mapToDouble(i -> Math.abs(thisGroupedGenes.get(SAME).get(i).weight -
+                            otherGroupedGenes.get(SAME).get(i).weight))
+                    .sum();
         }
-        return structuralDiff;
-	}
+
+        // Compute count of same, excess and disjoint count
+        List<Gene> empty = new ArrayList<>();
+        int sameCount = Math.max(1, thisGroupedGenes.getOrDefault(SAME, empty).size());
+        int disjointCount = thisGroupedGenes.getOrDefault(DISJOINT, empty).size() +
+                otherGroupedGenes.getOrDefault(DISJOINT, empty).size();
+        int excessCount = thisGroupedGenes.getOrDefault(EXCESS, empty).size() +
+                otherGroupedGenes.getOrDefault(EXCESS, empty).size();
+
+        distance += WEIGHT_DIFFERENCE_COEFFICIENT * sumWeightDifference / sameCount;
+        distance += DISJOINT_COEFFICIENT * disjointCount / NormalizeValue;
+        distance += EXCESS_COEFFICIENT * excessCount / NormalizeValue;
+        return distance;
+    }
 
 	public double getFitness() {
 	    return this.fitness;

@@ -16,6 +16,7 @@ public class Chromosome implements Comparable<Chromosome> {
     private int id;
     private List<Gene> genes = new ArrayList<>();
     private Future<Double> fitnessFuture = null;
+    private int speciesHint = 0;
 
     public Chromosome(Parameters params, Innovator innovator, IdGenerator idGenerator) {
         this.params = params;
@@ -32,6 +33,7 @@ public class Chromosome implements Comparable<Chromosome> {
         this.innovator = o.innovator;
         this.idGenerator = o.idGenerator;
         this.id = idGenerator.getNextId();
+        this.speciesHint = o.speciesHint;
         for (Gene gene: newGenes)
             genes.add(new Gene(gene));
         LOGGER.fine(String.format("Creating new chromosome C%d", id));
@@ -42,6 +44,7 @@ public class Chromosome implements Comparable<Chromosome> {
         this.innovator = o.innovator;
         this.idGenerator = o.idGenerator;
         this.id = idGenerator.getNextId();
+        this.speciesHint = o.speciesHint;
         for (Gene gene: o.genes)
             genes.add(new Gene(gene));
         LOGGER.fine(String.format("Creating new chromosome C%d", id));
@@ -361,5 +364,13 @@ public class Chromosome implements Comparable<Chromosome> {
 
     public List<Gene> getGenes() {
         return genes;
+    }
+
+    public int getSpeciesHint() {
+        return speciesHint;
+    }
+
+    public void setSpeciesHint(int speciesHint) {
+        this.speciesHint = speciesHint;
     }
 }

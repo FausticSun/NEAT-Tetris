@@ -54,12 +54,14 @@ public class Population {
         this.generation++;
         LOGGER.info(String.format("Entering generation %d", this.generation));
         generateNextPopulation();
-        LOGGER.info(String.format("Generation %d best Fitness: %f",
+        LOGGER.info(String.format("Generation %d best Fitness: %f, gene count: %d",
                 generation,
-                this.getFittestChromosome().getFitness()));
+                this.getFittestChromosome().getFitness(),
+                this.getFittestChromosome().getGenes().size()));
     }
 
     private void generateNextPopulation() {
+        innovator.clear();
         pruneStagnantSpecies();
         List<Chromosome> offsprings = generateOffsprings();
         LOGGER.info(String.format("%d new offsprings generated", offsprings.size()));
@@ -83,6 +85,9 @@ public class Population {
                     .sorted(Comparator.reverseOrder())
                     .limit(2)
                     .collect(Collectors.toList());
+            for (Species specie: species) {
+                specie.resetStagnation();
+            }
         } else {
             species.removeIf(Species::isStagnant);
         }

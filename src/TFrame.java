@@ -1,13 +1,11 @@
-import java.awt.Graphics2D;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-
-import javax.imageio.ImageIO;
-import javax.swing.JFrame;
-
 
 
 public class TFrame extends JFrame implements KeyListener{
@@ -67,7 +65,7 @@ public class TFrame extends JFrame implements KeyListener{
 			case(MANUAL): {
 				switch(e.getKeyCode()) {
 					case(KeyEvent.VK_RIGHT): {
-						if(slot < State.COLS-State.pWidth[s.nextPiece][orient])	slot++;
+						if(slot < State.COLS- State.pWidth[s.nextPiece][orient])	slot++;
 						s.clearNext();
 						s.drawNext(slot, orient);
 						break;
@@ -80,9 +78,9 @@ public class TFrame extends JFrame implements KeyListener{
 					}
 					case(KeyEvent.VK_UP): {
 						orient++;
-						if(orient%State.pOrients[s.nextPiece]==0)	orient = 0;
-						if(slot > State.COLS-State.pWidth[s.nextPiece][orient])
-							slot = State.COLS-State.pWidth[s.nextPiece][orient];
+						if(orient% State.pOrients[s.nextPiece]==0)	orient = 0;
+						if(slot > State.COLS- State.pWidth[s.nextPiece][orient])
+							slot = State.COLS- State.pWidth[s.nextPiece][orient];
 						s.clearNext();
 						s.drawNext(slot, orient);
 						break;
@@ -90,8 +88,8 @@ public class TFrame extends JFrame implements KeyListener{
 					case(KeyEvent.VK_DOWN): {
 						if(!s.makeMove(orient, slot))	mode = NONE;
 						if(orient >= State.pOrients[s.nextPiece])	orient = 0;
-						if(slot > State.COLS-State.pWidth[s.nextPiece][orient])
-							slot = State.COLS-State.pWidth[s.nextPiece][orient];
+						if(slot > State.COLS- State.pWidth[s.nextPiece][orient])
+							slot = State.COLS- State.pWidth[s.nextPiece][orient];
 						
 						s.draw();
 						if(mode == NONE)	{

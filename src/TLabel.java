@@ -1,32 +1,12 @@
-
-
-
-
-
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.RenderingHints;
-import java.awt.Toolkit;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelListener;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
-
-import javax.swing.*;
-
 
 
 public class TLabel{
@@ -165,7 +145,7 @@ public class TLabel{
 	// write the given string in the current font
 	public void setFont() { setFont(DEFAULT_FONT); }
 	public void setFont(Font f) { 
-		Toolkit toolkit = java . awt . Toolkit . getDefaultToolkit ();
+		Toolkit toolkit = Toolkit . getDefaultToolkit ();
 		double x = toolkit.getScreenSize().getWidth();
 		double y = toolkit.getScreenSize().getHeight();
 		double xscale = x/1400.0;

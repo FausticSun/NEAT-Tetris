@@ -37,6 +37,7 @@ public class Species implements Comparable<Species> {
                     distance,
                     compatibility));
             chromosomes.add(offspring);
+            offspring.setSpeciesHint(this.id);
             return true;
         }
         LOGGER.fine(String.format("Distance between C%d and S%d is %f > %f, rejected",

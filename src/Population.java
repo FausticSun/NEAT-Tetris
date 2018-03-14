@@ -96,6 +96,12 @@ public class Population {
         for (Chromosome offspring: offsprings) {
             found:
             {
+                Species hint = species.stream()
+                        .filter(s -> s.getId() == offspring.getSpeciesHint())
+                        .findFirst().orElse(null);
+                if (hint != null && hint.addChromosome(offspring, compatibility)) {
+                    break found;
+                }
                 for (Species specie : species) {
                     if (specie.addChromosome(offspring, compatibility)) {
                         break found;

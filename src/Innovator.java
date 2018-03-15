@@ -33,4 +33,9 @@ public class Innovator {
         }
         return nodeInnovations.get(link).stream().map(i -> new Gene(params, i)).collect(Collectors.toList());
     }
+
+    public void clear() {
+        linkInnovations.clear();
+        nodeInnovations.clear();
+    }
 }

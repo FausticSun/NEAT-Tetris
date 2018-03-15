@@ -14,7 +14,6 @@ public class Population {
     private double bestFitness = 0;
     private double compatibility;
     private double compatExponent;
-    private Chromosome randomChromosome;
 
     public Population(Parameters params) {
         this.params = params;
@@ -54,10 +53,13 @@ public class Population {
         this.generation++;
         LOGGER.info(String.format("Entering generation %d", this.generation));
         generateNextPopulation();
-        LOGGER.info(String.format("Generation %d best Fitness: %f, gene count: %d",
+        LOGGER.info(String.format("Generation %d best Fitness: %f, gene count: %d, node count: %d",
                 generation,
                 this.getFittestChromosome().getFitness(),
-                this.getFittestChromosome().getGenes().size()));
+                this.getFittestChromosome().getGenes().size(),
+                this.getFittestChromosome().getGenes().stream()
+                        .mapToInt(Link::getFrom)
+                        .distinct().count()));
     }
 
     private void generateNextPopulation() {

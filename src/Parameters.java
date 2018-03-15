@@ -27,7 +27,7 @@ public class Parameters {
 
     // NEAT parameters
     // Population parameters
-    public int POPULATION_SIZE = 100; // Population Size
+    public int POPULATION_SIZE = 15; // Population Size
     public double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
     public int MAXIMUM_POPULATION_STAGNATION = 20; // Generations of non-improvement before population is reduced
     public int TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
@@ -80,45 +80,106 @@ public class Parameters {
         Parameters params = new Parameters();
         // Experiment parameters
         params.EXPERIMENT_TYPE = "TETRIS";
-        params.GENERATION_LIMIT = 1000; // Number of iterations
+        params.GENERATION_LIMIT = 10000; // Number of iterations
         params.FITNESS_LIMIT = 1000; // Value for which we automatically end the search
         // NerualNet parameters
-        params.setNNSize(State.ROWS*State.COLS+State.N_PIECES, 4+State.COLS, 1);
+        params.INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
+        params.OUTPUT_SIZE = 4+State.COLS;
+        params.DEFAULT_HIDDEN_SIZE = 0;
+        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
 
         // NEAT parameters
         // Population parameters
-        params.POPULATION_SIZE = 250; // Population Size
+        params.POPULATION_SIZE = 100; // Population Size
         params.SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
-        params.MAXIMUM_POPULATION_STAGNATION = 20; // Generations of non-improvement before population is reduced
+        params.MAXIMUM_POPULATION_STAGNATION = 1000; // Generations of non-improvement before population is reduced
         params.TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
-        params.COMPATIBILITY_THRESHOLD = -10; // Starting threshold for measuring species compatibility
+        params.COMPATIBILITY_THRESHOLD = -3; // Starting threshold for measuring species compatibility
         params.COMPAT_MOD = 0.1; // Amount to tweak compatibility threshold by
         // Species parameters
-        params.MAXIMUM_SPECIES_STAGNATION = 30; // Generations of non-improvement before species is removed
+        params.MAXIMUM_SPECIES_STAGNATION = 20; // Generations of non-improvement before species is removed
         params.CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
         params.DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
         params.EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
-        params.WEIGHT_DIFFERENCE_COEFFICIENT = 0.8; // Coefficient for average weight difference
+        params.WEIGHT_DIFFERENCE_COEFFICIENT = 0.5; // Coefficient for average weight difference
         // Breeding/Mutation parameters
-        params.SIMILAR_FITNESS_DISCREPANCY = 0.005; // Amount of discrepancy for 2 chromosomes to have similar fitness
+        params.SIMILAR_FITNESS_DISCREPANCY = 0; // Amount of discrepancy for 2 chromosomes to have similar fitness
         params.WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
         params.WEIGHT_MUTATION_CHANCE = 0.1; // Chance of weight of gene being changed
-        params.NODE_MUTATION_CHANCE = 0.2; // Chance of inserting a new node
+        params.NODE_MUTATION_CHANCE = 0.05; // Chance of inserting a new node
         params.LINK_MUTATION_CHANCE = 0.1; // Chance of inserting a new link
         params.DISABLE_MUTATION_CHANCE = 0.1; // Chance of a gene being disabled
         params.ENABLE_MUTATION_CHANCE = 0.1; // Chance of a gene being enabled
 
         params.DEFAULT_CHROMOSOME_BLUEPRINT = new ArrayList<>();
-        int ONE_HOT_START_INDEX = params.INPUT_START_INDEX + State.ROWS*State.COLS;
-        for (int from=ONE_HOT_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
-            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, params.HIDDEN_START_INDEX));
-        }
-        for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
-            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(params.HIDDEN_START_INDEX, to));
-        }
+        // All inputs to 1 hidden node to outputs
+//        params.DEFAULT_HIDDEN_SIZE = 1;
+//        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
+//        int ONE_HOT_START_INDEX = params.INPUT_START_INDEX + State.ROWS*State.COLS;
+//        for (int from=ONE_HOT_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
+//            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, params.HIDDEN_START_INDEX));
+//        }
+//        for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(params.HIDDEN_START_INDEX, to));
+//        }
 
-        int FITNESS_EVALUATIONS = 500;
-        int EVALUATION_PER_THREAD = 100;
+        // Only piece type inputs to outputs
+//        params.DEFAULT_HIDDEN_SIZE = 0;
+//        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
+//        int ONE_HOT_START_INDEX = params.INPUT_START_INDEX + State.ROWS*State.COLS;
+//        for (int from=ONE_HOT_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
+//            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+
+        // All inputs to outputs
+//        params.DEFAULT_HIDDEN_SIZE = 0;
+//        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
+//        for (int from=params.BIAS_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
+//            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+
+        // Piece type inputs connects directly to outputs, other inputs connect via 1 hidden node
+//        params.DEFAULT_HIDDEN_SIZE = 1;
+//        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
+//        int ONE_HOT_START_INDEX = params.INPUT_START_INDEX + State.ROWS*State.COLS;
+//        for (int from=ONE_HOT_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
+//            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+//        for (int from=params.INPUT_START_INDEX; from<ONE_HOT_START_INDEX; from++) {
+//            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, params.HIDDEN_START_INDEX));
+//        }
+//        for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//            params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(params.HIDDEN_START_INDEX, to));
+//        }
+
+        // Piece type inputs connects directly to outputs, other inputs connect via 5 hidden nodes
+//        params.DEFAULT_HIDDEN_SIZE = 5;
+//        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
+//        int ONE_HOT_START_INDEX = params.INPUT_START_INDEX + State.ROWS*State.COLS;
+//        for (int from=ONE_HOT_START_INDEX; from<params.OUTPUT_START_INDEX; from++) {
+//            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+//        for (int from=params.INPUT_START_INDEX; from<ONE_HOT_START_INDEX; from++) {
+//            for (int to=params.HIDDEN_START_INDEX; to<params.HIDDEN_START_INDEX+params.DEFAULT_HIDDEN_SIZE; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+//        for (int from=params.HIDDEN_START_INDEX; from<params.HIDDEN_START_INDEX+params.DEFAULT_HIDDEN_SIZE; from++) {
+//            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+//                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+//            }
+//        }
+
+        int FITNESS_EVALUATIONS = 100;
+        int EVALUATION_PER_THREAD = 50;
         params.FITNESS_EVALUATOR = (nn) -> {
             LOGGER.fine(String.format("Evaluating fitness for C%d", nn.getChromosome().getId()));
             Function<List<Integer>, List<Double>> tetrisFitnessEvaluator = l -> {

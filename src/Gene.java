@@ -1,3 +1,5 @@
+import java.util.Random;
+
 public class Gene extends Innovation {
     private Parameters params;
     private double weight = 0;
@@ -19,7 +21,7 @@ public class Gene extends Innovation {
     }
 
     public void perterbWeight() {
-        this.weight += Math.random() * params.WEIGHT_MUTATION_RANGE*2 - params.WEIGHT_MUTATION_RANGE;
+        this.weight += (new Random()).nextGaussian()*params.WEIGHT_MUTATION_RANGE;
     }
 
     public double getWeight() {

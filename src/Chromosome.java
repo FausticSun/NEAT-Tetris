@@ -6,6 +6,7 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class Chromosome implements Comparable<Chromosome> {
     private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
@@ -89,37 +90,113 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public Chromosome mutate() {
-        double randomNumber = Math.random();
-        mutated:
-        {
-            if (randomNumber < params.LINK_MUTATION_CHANCE) {
-                mutateLink();
-                break mutated;
+        if (params.CLASSIC_TOPOLOGY_MUTATION) {
+            double randomNumber = Math.random();
+            mutated:
+            {
+                if (randomNumber < params.LINK_MUTATION_CHANCE) {
+                    mutateLink();
+                    break mutated;
+                }
+                randomNumber -= params.LINK_MUTATION_CHANCE;
+                if (randomNumber < params.NODE_MUTATION_CHANCE) {
+                    mutateNode();
+                    break mutated;
+                }
+                randomNumber -= params.NODE_MUTATION_CHANCE;
+                if (randomNumber < params.WEIGHT_MUTATION_CHANCE) {
+                    mutateGeneWeight();
+                    break mutated;
+                }
+                randomNumber -= params.WEIGHT_MUTATION_CHANCE;
+                if (randomNumber < params.DISABLE_MUTATION_CHANCE) {
+                    mutateGeneToggle(true);
+                    break mutated;
+                }
+                randomNumber -= params.DISABLE_MUTATION_CHANCE;
+                if (randomNumber < params.ENABLE_MUTATION_CHANCE) {
+                    mutateGeneToggle(false);
+                    break mutated;
+                }
             }
-            randomNumber -= params.LINK_MUTATION_CHANCE;
-            if (randomNumber < params.NODE_MUTATION_CHANCE) {
-                mutateNode();
-                break mutated;
-            }
-            randomNumber -= params.NODE_MUTATION_CHANCE;
-            if (randomNumber < params.WEIGHT_MUTATION_CHANCE) {
-                mutateGeneWeight();
-                break mutated;
-            }
-            randomNumber -= params.WEIGHT_MUTATION_CHANCE;
-            if (randomNumber < params.DISABLE_MUTATION_CHANCE) {
-                mutateGeneToggle(true);
-                break mutated;
-            }
-            randomNumber -= params.DISABLE_MUTATION_CHANCE;
-            if (randomNumber < params.ENABLE_MUTATION_CHANCE) {
-                mutateGeneToggle(false);
-                break mutated;
-            }
+        } else {
+            anjiMutate();
         }
         
         evaluateFitness();
         return this;
+    }
+
+    private void anjiMutate() {
+        anjiMutateGenes();
+        anjiMutateLink();
+        anjiMutateNode();
+    }
+
+    private void anjiMutateNode() {
+        Gene g;
+        for (int i=0; i<genes.size(); i++) {
+            g = genes.get(i);
+            if (g.isEnabled() && Math.random() < params.NODE_MUTATION_CHANCE) {
+                g.toggleEnabled();
+                genes.addAll(innovator.innovateNode(g));
+            }
+        }
+    }
+
+    private void anjiMutateLink() {
+        List<Integer> presentNeurons = Stream.concat(
+                genes.stream().map(Link::getFrom),
+                IntStream.range(params.BIAS_START_INDEX, params.OUTPUT_START_INDEX).boxed())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        presentNeurons.addAll(IntStream.range(params.OUTPUT_START_INDEX, params.HIDDEN_START_INDEX)
+                .boxed()
+                .collect(Collectors.toList()));
+        for (int from=0; from<presentNeurons.size()-1; from++) {
+            for (int to=from+1; to<presentNeurons.size(); to++) {
+                anjiMutateLink(from, to);
+            }
+        }
+    }
+
+    private void anjiMutateLink(int from, int to) {
+        if (!isInput(to) && !isOutput(from) && !isDisabled(from) &&
+                Math.random() < params.LINK_MUTATION_CHANCE) {
+            if (isHidden(from) && isHidden(to) && dfs(from, to)) {
+                return;
+            }
+            genes.add(innovator.innovateLink(new Link(from, to)));
+        }
+    }
+
+    private boolean isHidden(int i) {
+        return !isInput(i) && !isOutput(i);
+    }
+
+    private boolean isDisabled(int i) {
+        return false;
+    }
+
+    private boolean isOutput(int i) {
+        return i >= params.OUTPUT_START_INDEX && i <= params.HIDDEN_START_INDEX;
+    }
+
+    private boolean isInput(int i) {
+        return i >= params.BIAS_START_INDEX && i <= params.OUTPUT_START_INDEX;
+    }
+
+    private void anjiMutateGenes() {
+        for (Gene g: genes) {
+            if ((g.isEnabled() && Math.random() < params.DISABLE_MUTATION_CHANCE) ||
+                    (!g.isEnabled() && Math.random() < params.ENABLE_MUTATION_CHANCE)) {
+                g.toggleEnabled();
+            }
+            if (Math.random() < params.WEIGHT_MUTATION_CHANCE) {
+                g.perterbWeight();
+            }
+        }
     }
 
     private void mutateGeneToggle(boolean b) {

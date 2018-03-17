@@ -23,12 +23,19 @@ public class TetrisState extends State {
     }
 
     public boolean setOutputs(List<Double> outputs) {
-        int orient = getOrient(outputs);
-        int slot = getSlot(outputs, orient);
-        if (slot == -1)
+        int bestIndex = 0;
+        double bestActivation = 0;
+        for (int i=0; i<outputs.size(); i++) {
+            if (outputs.get(i) > bestActivation) {
+                bestActivation = outputs.get(i);
+                bestIndex = i;
+            }
+        }
+        if (bestIndex >= legalMoves[nextPiece].length) {
             super.lost = true;
-        else
-            super.makeMove(orient, slot);
+        } else {
+            super.makeMove(bestIndex);
+        }
         return super.hasLost();
     }
 
@@ -45,6 +52,7 @@ public class TetrisState extends State {
         return slot < (COLS - pWidth[super.nextPiece][orient] + 1) ? slot : -1;
     }
 
+    // 0 - box, 1 - line, 2 - L, 3 - L rev, 4 - T, 5 & 6 - Trash
     private int getOrient(List<Double> outputs) {
         int nextPiece = super.getNextPiece();
         double max = outputs.get(0);

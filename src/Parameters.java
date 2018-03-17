@@ -43,8 +43,8 @@ public class Parameters {
     public boolean CLASSIC_TOPOLOGY_MUTATION = false; // Whether to use classic neat mutation or ANJI style mutation
     public double SIMILAR_FITNESS_DISCREPANCY = 0; // Amount of discrepancy for 2 chromosomes to have similar fitness
     public double WEIGHT_MUTATION_RANGE = 1.0; // Range at which the weight can be increased or decreased by
-    public double WEIGHT_MUTATION_CHANCE = 0.25; // Chance of weight of gene being changed
-    public double NODE_MUTATION_CHANCE = 0.30; // Chance of inserting a new node
+    public double WEIGHT_MUTATION_CHANCE = 0.01; // Chance of weight of gene being changed
+    public double NODE_MUTATION_CHANCE = 0.01; // Chance of inserting a new node
     public double LINK_MUTATION_CHANCE = 0.25; // Chance of inserting a new link
     public double DISABLE_MUTATION_CHANCE = 0.04; // Chance of a gene being disabled
     public double ENABLE_MUTATION_CHANCE = 0.02; // Chance of a gene being enabled
@@ -85,7 +85,7 @@ public class Parameters {
         params.FITNESS_LIMIT = 1000; // Value for which we automatically end the search
         // NerualNet parameters
         params.INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
-        params.OUTPUT_SIZE = 4+State.COLS;
+        params.OUTPUT_SIZE = 4*State.COLS;
         params.DEFAULT_HIDDEN_SIZE = 0;
         params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
 
@@ -95,22 +95,22 @@ public class Parameters {
         params.SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
         params.MAXIMUM_POPULATION_STAGNATION = 1000; // Generations of non-improvement before population is reduced
         params.TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
-        params.COMPATIBILITY_THRESHOLD = -3; // Starting threshold for measuring species compatibility
+        params.COMPATIBILITY_THRESHOLD = 3; // Starting threshold for measuring species compatibility
         params.COMPAT_MOD = 0.1; // Amount to tweak compatibility threshold by
         // Species parameters
-        params.MAXIMUM_SPECIES_STAGNATION = 20; // Generations of non-improvement before species is removed
+        params.MAXIMUM_SPECIES_STAGNATION = 1; // Generations of non-improvement before species is removed
         params.CROSSOVER_CHANCE = 0.05; // Chance of interspecies breeding
         params.DISJOINT_COEFFICIENT = 1; //  Importance of disjoint genes in measuring compatibility
         params.EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
         params.WEIGHT_DIFFERENCE_COEFFICIENT = 0.5; // Coefficient for average weight difference
         // Breeding/Mutation parameters
         params.SIMILAR_FITNESS_DISCREPANCY = 0; // Amount of discrepancy for 2 chromosomes to have similar fitness
-        params.WEIGHT_MUTATION_RANGE = 2.5; // Range at which the weight can be increased or decreased by
+        params.WEIGHT_MUTATION_RANGE = 1; // Range at which the weight can be increased or decreased by
         params.WEIGHT_MUTATION_CHANCE = 0.1; // Chance of weight of gene being changed
-        params.NODE_MUTATION_CHANCE = 0.05; // Chance of inserting a new node
-        params.LINK_MUTATION_CHANCE = 0.1; // Chance of inserting a new link
-        params.DISABLE_MUTATION_CHANCE = 0.1; // Chance of a gene being disabled
-        params.ENABLE_MUTATION_CHANCE = 0.1; // Chance of a gene being enabled
+        params.NODE_MUTATION_CHANCE = 0.01; // Chance of inserting a new node
+        params.LINK_MUTATION_CHANCE = 0.01; // Chance of inserting a new link
+        params.DISABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being disabled
+        params.ENABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being enabled
 
         params.DEFAULT_CHROMOSOME_BLUEPRINT = new ArrayList<>();
         // All inputs to 1 hidden node to outputs
@@ -180,7 +180,7 @@ public class Parameters {
 //        }
 
         int FITNESS_EVALUATIONS = 5;
-        int EVALUATION_PER_THREAD = 5;
+        int EVALUATION_PER_THREAD = 10;
         params.FITNESS_EVALUATOR = (nn) -> {
             LOGGER.fine(String.format("Evaluating fitness for C%d", nn.getChromosome().getId()));
             Function<List<Integer>, List<Double>> tetrisFitnessEvaluator = l -> {

@@ -84,7 +84,7 @@ public class Parameters {
         params.GENERATION_LIMIT = 10000; // Number of iterations
         params.FITNESS_LIMIT = 1000; // Value for which we automatically end the search
         // NerualNet parameters
-        params.INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES + 21; //extra 21 for differential pieces
+        params.INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES + State.COLS*2-1+2; //extra 21 for differential pieces
         params.OUTPUT_SIZE = 4*State.COLS;
         params.DEFAULT_HIDDEN_SIZE = 0;
         params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);

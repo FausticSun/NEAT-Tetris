@@ -20,7 +20,7 @@ public class TetrisState extends State {
         }
 
         // Feature Information Start!
-        
+
         // column heights
         int maxColumnHeight = 0;
         for (int i=0; i<COLS; i++) {

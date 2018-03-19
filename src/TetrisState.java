@@ -19,6 +19,47 @@ public class TetrisState extends State {
             inputs.add(i == nextPiece ? 1.0 : 0.0);
         }
 
+        // Feature Information Start!
+        
+        // column heights
+        int maxColumnHeight = 0;
+        for (int i=0; i<COLS; i++) {
+            for (int j=ROWS-1; j>=0; j--) {
+                if ((field[j][i]!=0)) {
+                    if (maxColumnHeight < j+1)
+                        maxColumnHeight = j+1;
+                    inputs.add(j + 1.0);
+                    break;
+                }
+                else if (j == 0)
+                    inputs.add((double)j);
+            }
+        }
+
+        // absolute differences between adjacent column heights
+        for (int i=0; i<COLS - 1; i++) {
+            inputs.add(Math.abs(inputs.get(inputs.size()-COLS) - inputs.get(inputs.size()+1-COLS)));
+        }
+
+        // 1 max column height
+        inputs.add((double)maxColumnHeight);
+
+        // 1 number of holes in the wall
+        int holes = 0;
+        boolean underThing = false;
+        for (int i=0; i<COLS; i++) {
+            for (int j=ROWS-1; j>=0; j--) {
+                if (field[j][i]!=0 && !underThing) {
+                    underThing = true;
+                }
+                else if (field[j][i]==0 && underThing) {
+                    holes++;
+                }
+            }
+            underThing = false;
+        }
+        inputs.add((double)holes);
+
         return inputs;
     }
 

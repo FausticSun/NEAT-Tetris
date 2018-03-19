@@ -2,6 +2,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -124,6 +125,7 @@ public class Chromosome implements Comparable<Chromosome> {
         }
         
         evaluateFitness();
+        List<Link> li = khanTopologicalSort();
         return this;
     }
 
@@ -317,6 +319,75 @@ public class Chromosome implements Comparable<Chromosome> {
         }
         return false;
     }
+    
+    private List<Link> khanTopologicalSort() {
+    	//Generate Adj list
+		Map<Integer, List<Gene>> adjList = new HashMap<>();
+		Map<Integer, Integer> incomingCounts = new HashMap<>();
+		for (Gene g : genes) {
+			if(!adjList.containsKey(g.getFrom())) {
+				adjList.put(g.getFrom(), new ArrayList<>());
+			}
+			adjList.get(g.getFrom()).add(g);
+			if(!incomingCounts.containsKey(g.getTo())) {
+				incomingCounts.put(g.getTo(), 0);
+			}
+			incomingCounts.put(g.getTo(), incomingCounts.get(g.getTo()) + 1);
+		}
+		
+		//Ensure that incomingCounts contain all the output nodes and are never removed.
+		for(int i = params.OUTPUT_START_INDEX; i < params.HIDDEN_START_INDEX; i++) {
+			if(!incomingCounts.containsKey(i)) {
+				incomingCounts.put(i, 1);
+			} else {
+				incomingCounts.put(i, incomingCounts.get(i) + 1);
+			}
+		}
+		
+		//Start by processing all the input nodes
+		Queue<Integer> inputItemsToProcess = new LinkedBlockingQueue<>();
+		for (int i=params.BIAS_START_INDEX; i<params.OUTPUT_START_INDEX; i++) {
+			inputItemsToProcess.add(i);
+		}
+		
+		//After that, process these nodes
+		Queue<Integer> itemsToProcess = new LinkedBlockingQueue<>();
+		
+		List<Link> results = new ArrayList<>();
+		
+		while(inputItemsToProcess.size() > 0 || itemsToProcess.size() > 0) {
+			int nextItem;
+			if(inputItemsToProcess.size() > 0) {
+				nextItem = inputItemsToProcess.poll();
+			} else {
+				nextItem = itemsToProcess.poll();
+			}
+			
+			//Add all remaining unprocessed nodes as a potential link from what we have to there
+			incomingCounts.forEach((key, value) -> results.add(new Link(nextItem, key)));
+			itemsToProcess.forEach(integer -> results.add(new Link(nextItem, integer)));
+			
+			//Process this node, removing it's links from all next nodes.
+			List<Gene> outgoings = new ArrayList<>();
+			if(adjList.containsKey(nextItem)) {
+				outgoings = adjList.get(nextItem);
+				adjList.remove(nextItem);
+			}
+			
+			//Add nodes with no remaining input links to itemsToProcess.
+			for(Gene outgoingGene : outgoings) {
+				int newOutgoing = incomingCounts.get(outgoingGene.getTo()) - 1;
+				if(newOutgoing == 0) {
+					incomingCounts.remove(outgoingGene.getTo());
+					itemsToProcess.add(outgoingGene.getTo());
+				} else {
+					incomingCounts.put(outgoingGene.getTo(), newOutgoing);
+				}
+			}
+		}
+	
+		return results;
+	}
 
     public Chromosome mutateAllGenesWeight() {
         for (Gene g: genes) {

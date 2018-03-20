@@ -108,7 +108,7 @@ public class Parameters {
         params.WEIGHT_MUTATION_RANGE = 1; // Range at which the weight can be increased or decreased by
         params.WEIGHT_MUTATION_CHANCE = 0.1; // Chance of weight of gene being changed
         params.NODE_MUTATION_CHANCE = 0.01; // Chance of inserting a new node
-        params.LINK_MUTATION_CHANCE = 0.01; // Chance of inserting a new link
+        params.LINK_MUTATION_CHANCE = 0.002; // Chance of inserting a new link
         params.DISABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being disabled
         params.ENABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being enabled
 

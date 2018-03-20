@@ -7,7 +7,6 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class Chromosome implements Comparable<Chromosome> {
     private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
@@ -125,7 +124,6 @@ public class Chromosome implements Comparable<Chromosome> {
         }
         
         evaluateFitness();
-        List<Link> li = khanTopologicalSort();
         return this;
     }
 
@@ -147,28 +145,14 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     private void anjiMutateLink() {
-        List<Integer> presentNeurons = Stream.concat(
-                genes.stream().map(Link::getFrom),
-                IntStream.range(params.BIAS_START_INDEX, params.OUTPUT_START_INDEX).boxed())
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
-        presentNeurons.addAll(IntStream.range(params.OUTPUT_START_INDEX, params.HIDDEN_START_INDEX)
-                .boxed()
-                .collect(Collectors.toList()));
-        for (int from=0; from<presentNeurons.size()-1; from++) {
-            for (int to=from+1; to<presentNeurons.size(); to++) {
-                anjiMutateLink(from, to);
-            }
-        }
+        List<Link> potentialMutations = khanTopologicalSort();
+        for(Link l : potentialMutations) {
+        	anjiMutateLink(l.getFrom(), l.getTo());
+		}
     }
 
     private void anjiMutateLink(int from, int to) {
-        if (!isInput(to) && !isOutput(from) && !isDisabled(from) &&
-                Math.random() < params.LINK_MUTATION_CHANCE) {
-            if (isHidden(from) && isHidden(to) && dfs(from, to)) {
-                return;
-            }
+        if (Math.random() < params.LINK_MUTATION_CHANCE) {
             genes.add(innovator.innovateLink(new Link(from, to)));
         }
     }

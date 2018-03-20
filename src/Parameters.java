@@ -40,7 +40,7 @@ public class Parameters {
     public double EXCESS_COEFFICIENT = 1; // Coefficient for excess genes
     public double WEIGHT_DIFFERENCE_COEFFICIENT = 3; // Coefficient for average weight difference
     // Breeding/Mutation parameters
-    public boolean CLASSIC_TOPOLOGY_MUTATION = true; // Whether to use classic neat mutation or ANJI style mutation
+    public boolean CLASSIC_TOPOLOGY_MUTATION = false; // Whether to use classic neat mutation or ANJI style mutation
     public double SIMILAR_FITNESS_DISCREPANCY = 0; // Amount of discrepancy for 2 chromosomes to have similar fitness
     public double WEIGHT_MUTATION_RANGE = 1.0; // Range at which the weight can be increased or decreased by
     public double WEIGHT_MUTATION_CHANCE = 0.01; // Chance of weight of gene being changed

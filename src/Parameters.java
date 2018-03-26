@@ -80,12 +80,13 @@ public class Parameters {
     public static Parameters createTetrisParameters() {
         Parameters params = new Parameters();
         // Experiment parameters
+        int features = 6;
         params.EXPERIMENT_TYPE = "TETRIS";
         params.GENERATION_LIMIT = 10000; // Number of iterations
-        params.FITNESS_LIMIT = 1000; // Value for which we automatically end the search
+        params.FITNESS_LIMIT = 1000000; // Value for which we automatically end the search
         // NerualNet parameters
-        params.INPUT_SIZE = State.ROWS*State.COLS+State.N_PIECES;
-        params.OUTPUT_SIZE = 4*State.COLS;
+        params.INPUT_SIZE = features+State.ROWS*State.COLS+State.N_PIECES;
+        params.OUTPUT_SIZE = 1;
         params.DEFAULT_HIDDEN_SIZE = 0;
         params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);
 
@@ -113,6 +114,12 @@ public class Parameters {
         params.ENABLE_MUTATION_CHANCE = 0.001; // Chance of a gene being enabled
 
         params.DEFAULT_CHROMOSOME_BLUEPRINT = new ArrayList<>();
+        // All bias and feature inputs to outputs
+        for (int from=0; from<1+features; from++) {
+            for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
+                params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
+            }
+        }
         // All inputs to 1 hidden node to outputs
 //        params.DEFAULT_HIDDEN_SIZE = 1;
 //        params.setNNSize(params.INPUT_SIZE, params.OUTPUT_SIZE, params.DEFAULT_HIDDEN_SIZE);

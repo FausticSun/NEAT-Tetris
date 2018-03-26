@@ -209,6 +209,7 @@ public class Parameters {
                     .map(tetrisFitnessEvaluator)
                     .flatMap(List::stream).collect(Collectors.toList())
                     .stream().mapToDouble(d->d).average().orElse(0);
+            LOGGER.fine(String.format("C%d fitness: %f", nn.getChromosome().getId(), finalFitness));
             return finalFitness;
         };
         return params;

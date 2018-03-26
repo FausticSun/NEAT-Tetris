@@ -26,7 +26,7 @@ public class PlayerSkeleton {
         TFrame demo;
         NeuralNet nn;
         while (ex.getGeneration() < params.GENERATION_LIMIT) {
-            ex.run(0);
+            ex.run(1);
 
             LOGGER.info(String.format("Demoing fittest of Generation %d", ex.getGeneration()));
             nn = new NeuralNet(ex.getFittest().getNeuralNet());
@@ -39,7 +39,7 @@ public class PlayerSkeleton {
                 s.draw();
                 s.drawNext(0, 0);
                 try {
-                    Thread.sleep(50);
+                    Thread.sleep(0);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

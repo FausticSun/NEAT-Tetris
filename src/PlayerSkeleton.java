@@ -29,9 +29,9 @@ public class PlayerSkeleton {
             ex.run(0);
 
             LOGGER.info(String.format("Demoing fittest of Generation %d", ex.getGeneration()));
-            s = new TetrisState();
-            demo = new TFrame(s);
             nn = new NeuralNet(ex.getFittest().getNeuralNet());
+            s = new TetrisState(nn);
+            demo = new TFrame(s);
 
             while (!s.hasLost()) {
                 s.makeBestMove();

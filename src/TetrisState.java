@@ -181,7 +181,7 @@ public class TetrisState extends State {
             }
             prevIsWell = thisIsWell;
         }
-        features.add(wellSum);
+        features.add((double) wellSum);
 
         // Convert field to binary input
         int[][] field = super.getField();

@@ -106,11 +106,11 @@ public class Parameters {
         // Breeding/Mutation parameters
         params.SIMILAR_FITNESS_DISCREPANCY = 0; // Amount of discrepancy for 2 chromosomes to have similar fitness
         params.WEIGHT_MUTATION_RANGE = 1; // Range at which the weight can be increased or decreased by
-        params.WEIGHT_MUTATION_CHANCE = 0.1; // Chance of weight of gene being changed
-        params.NODE_MUTATION_CHANCE = 0.01; // Chance of inserting a new node
-        params.LINK_MUTATION_CHANCE = 0.002; // Chance of inserting a new link
-        params.DISABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being disabled
-        params.ENABLE_MUTATION_CHANCE = 0.01; // Chance of a gene being enabled
+        params.WEIGHT_MUTATION_CHANCE = 0.01; // Chance of weight of gene being changed
+        params.NODE_MUTATION_CHANCE = 0.005; // Chance of inserting a new node
+        params.LINK_MUTATION_CHANCE = 0.004; // Chance of inserting a new link
+        params.DISABLE_MUTATION_CHANCE = 0.001; // Chance of a gene being disabled
+        params.ENABLE_MUTATION_CHANCE = 0.001; // Chance of a gene being enabled
 
         params.DEFAULT_CHROMOSOME_BLUEPRINT = new ArrayList<>();
         // All inputs to 1 hidden node to outputs

@@ -84,34 +84,6 @@ public class TetrisState extends State {
         }
 
         List<Double> features = new ArrayList<>();
-        // Original features in the project description
-//        // Bias?
-//        features.add(1);
-//        // Column Heights
-//        for (int i: simulatedTop) {
-//            features.add(i);
-//        }
-//        // Difference between adjacent column height
-//        for (int i=0; i<simulatedTop.length-1; i++)
-//            features.add(Math.abs(simulatedTop[0] - simulatedTop[1]));
-//        // Maximum column height
-//        int max = 0;
-//        for (int i: simulatedTop)
-//            max = Math.max(i, max);
-//        features.add(max);
-//        // Holes
-//        int holes = 0;
-//        for (int col=0; col<COLS; col++) {
-//            for (int row=simulatedTop[col]; row>=0; row--) {
-//                if (simulatedField[row][col] == 0) {
-//                    holes++;
-//                }
-//            }
-//        }
-//        features.add(holes);
-//        // Rows cleared
-//        features.add(rowsCleared);
-
         // El-Tetris features
         // http://imake.ninja/el-tetris-an-improvement-on-pierre-dellacheries-algorithm/
         features.add((double) landingHeight);
@@ -182,6 +154,34 @@ public class TetrisState extends State {
             prevIsWell = thisIsWell;
         }
         features.add((double) wellSum);
+
+        // Original features in the project description
+//        // Bias?
+//        features.add(1);
+        // Column Heights
+        for (int i: simulatedTop) {
+            features.add((double) i);
+        }
+        // Difference between adjacent column height
+        for (int i=0; i<simulatedTop.length-1; i++)
+            features.add((double) Math.abs(simulatedTop[0] - simulatedTop[1]));
+        // Maximum column height
+        int max = 0;
+        for (int i: simulatedTop)
+            max = Math.max(i, max);
+        features.add((double) max);
+//        // Holes
+//        int holes = 0;
+//        for (int col=0; col<COLS; col++) {
+//            for (int row=simulatedTop[col]; row>=0; row--) {
+//                if (simulatedField[row][col] == 0) {
+//                    holes++;
+//                }
+//            }
+//        }
+//        features.add(holes);
+//        // Rows cleared
+//        features.add(rowsCleared);
 
         // Convert field to binary input
         int[][] field = super.getField();

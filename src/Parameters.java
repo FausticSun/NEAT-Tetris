@@ -80,7 +80,7 @@ public class Parameters {
     public static Parameters createTetrisParameters() {
         Parameters params = new Parameters();
         // Experiment parameters
-        int features = 6;
+        int features = 26;
         params.EXPERIMENT_TYPE = "TETRIS";
         params.GENERATION_LIMIT = 10000; // Number of iterations
         params.FITNESS_LIMIT = 1000000; // Value for which we automatically end the search
@@ -96,7 +96,7 @@ public class Parameters {
         params.SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
         params.MAXIMUM_POPULATION_STAGNATION = 1000; // Generations of non-improvement before population is reduced
         params.TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
-        params.COMPATIBILITY_THRESHOLD = 3; // Starting threshold for measuring species compatibility
+        params.COMPATIBILITY_THRESHOLD = 0; // Starting threshold for measuring species compatibility
         params.COMPAT_MOD = 0.1; // Amount to tweak compatibility threshold by
         // Species parameters
         params.MAXIMUM_SPECIES_STAGNATION = 1; // Generations of non-improvement before species is removed
@@ -114,8 +114,8 @@ public class Parameters {
         params.ENABLE_MUTATION_CHANCE = 0.001; // Chance of a gene being enabled
 
         params.DEFAULT_CHROMOSOME_BLUEPRINT = new ArrayList<>();
-        // All bias and feature inputs to outputs
-        for (int from=0; from<1+features; from++) {
+        // All bias and el-tetris feature inputs to outputs
+        for (int from=0; from<1+6; from++) {
             for (int to=params.OUTPUT_START_INDEX; to<params.HIDDEN_START_INDEX; to++) {
                 params.DEFAULT_CHROMOSOME_BLUEPRINT.add(new Link(from, to));
             }

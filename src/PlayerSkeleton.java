@@ -1,5 +1,3 @@
-import java.awt.event.WindowEvent;
-import java.util.List;
 import java.util.logging.Logger;
 
 public class PlayerSkeleton {
@@ -36,7 +34,7 @@ public class PlayerSkeleton {
             nn = new NeuralNet(ex.getFittest().getNeuralNet());
 
             while (!s.hasLost()) {
-                s.setOutputs(nn.activate(s.getInputs()));
+                s.makeBestMove();
 
                 s.draw();
                 s.drawNext(0, 0);

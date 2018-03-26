@@ -187,9 +187,9 @@ public class Parameters {
                 NeuralNet subNn = new NeuralNet(nn);
                 return l.stream()
                         .map(i -> {
-                            TetrisState s = new TetrisState();
+                            TetrisState s = new TetrisState(subNn);
                             while (!s.hasLost()) {
-                                s.setOutputs(subNn.activate(s.getInputs()));
+                                s.makeBestMove();
                             }
                             return s.getFitness();
                         })

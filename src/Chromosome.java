@@ -55,9 +55,26 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public void evaluateFitness() {
-        NeuralNet neuralNet = new NeuralNet(params, this);
-        fitness = params.FITNESS_EVALUATOR.apply(neuralNet);
-        LOGGER.fine(String.format("C%d fitness evaluated %f", getId(), fitness));
+        int FITNESS_EVALUATIONS = 1;
+        NeuralNet nn = new NeuralNet(params, this);
+        LOGGER.fine(String.format("Evaluating fitness for C%d", nn.getChromosome().getId()));
+        double finalFitness = IntStream.range(0, FITNESS_EVALUATIONS)
+                .mapToDouble(i -> {
+                    TetrisState s = new TetrisState(nn);
+//                        TFrame demo = new TFrame(s);
+
+                    while (!s.hasLost()) {
+                        s.makeBestMove();
+
+//                            s.draw();
+//                            s.drawNext(0, 0);
+                    }
+//                        demo.dispose();
+                    return s.getFitness();
+                })
+                .average().orElse(0);
+        LOGGER.fine(String.format("C%d fitness: %f", getId(), finalFitness));
+        fitness = finalFitness;
     }
 
     @Override

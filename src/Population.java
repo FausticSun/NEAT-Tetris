@@ -29,6 +29,7 @@ public class Population {
         List<Chromosome> offsprings = new ArrayList<>();
         for (int i=0; i<params.POPULATION_SIZE; i++)
             offsprings.add((new Chromosome(defaultChromosome)).mutateAllGenesWeight().mutate());
+        evaluatePopulationFitness(offsprings);
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
@@ -67,10 +68,16 @@ public class Population {
         pruneStagnantSpecies();
         List<Chromosome> offsprings = generateOffsprings();
         LOGGER.info(String.format("%d new offsprings generated", offsprings.size()));
+        evaluatePopulationFitness(offsprings);
         clearSpeciesChromosomes();
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
+    }
+
+    private void evaluatePopulationFitness(List<Chromosome> offsprings) {
+        offsprings.parallelStream()
+                .forEach(Chromosome::evaluateFitness);
     }
 
     private void pruneStagnantSpecies() {

@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 public class PlayerSkeleton {
@@ -20,6 +22,22 @@ public class PlayerSkeleton {
     }
 
     public PlayerSkeleton() {
+//        State s = new State();
+//        ArrayList<Integer> pieces = new ArrayList<>();
+//        while (!s.hasLost()) {
+//            pieces.add(s.nextPiece);
+//            s.makeMove(0);
+//        }
+//        s = new State();
+//        Iterator<Integer> it = pieces.iterator();
+//        while(!s.hasLost()) {
+//            if (it.next() != s.nextPiece) {
+//                System.out.println("FAILED");
+//                break;
+//            }
+//            s.makeMove(0);
+//        }
+//        System.out.println("END");
         Parameters params = Parameters.createTetrisParameters();
         Experiment ex = new Experiment(params);
         TetrisState s;
@@ -29,7 +47,7 @@ public class PlayerSkeleton {
             ex.run(1);
 
             LOGGER.info(String.format("Demoing fittest of Generation %d", ex.getGeneration()));
-            nn = new NeuralNet(ex.getFittest().getNeuralNet());
+            nn = new NeuralNet(params, ex.getFittest());
             s = new TetrisState(nn);
             demo = new TFrame(s);
 
@@ -38,14 +56,9 @@ public class PlayerSkeleton {
 
                 s.draw();
                 s.drawNext(0, 0);
-                try {
-                    Thread.sleep(0);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
             }
             demo.dispose();
-            LOGGER.info(String.format("%d moves made with %d rows cleared", s.getTurnNumber(), s.getRowsCleared()));
+            LOGGER.info(String.format("%d moves made with %d rows cleared and %f fitness", s.getTurnNumber(), s.getRowsCleared(), s.getFitness()));
         }
     }
 }

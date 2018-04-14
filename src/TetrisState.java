@@ -9,6 +9,7 @@ public class TetrisState extends State {
     private NeuralNet nn;
 
     public TetrisState(NeuralNet subNn) {
+        super();
         this.nn = subNn;
     }
 

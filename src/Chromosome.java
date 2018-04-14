@@ -13,10 +13,9 @@ public class Chromosome implements Comparable<Chromosome> {
     private Parameters params;
     private Innovator innovator;
     private IdGenerator idGenerator;
-    private NeuralNet neuralNet = null;
     private int id;
     private List<Gene> genes = new ArrayList<>();
-    private Future<Double> fitnessFuture = null;
+    private double fitness = -1;
     private int speciesHint = 0;
 
     public Chromosome(Parameters params, Innovator innovator, IdGenerator idGenerator) {
@@ -55,21 +54,10 @@ public class Chromosome implements Comparable<Chromosome> {
         return id;
     }
 
-    public NeuralNet getNeuralNet() {
-        if (this.neuralNet == null) {
-            this.neuralNet = new NeuralNet(params, this);
-        }
-        return this.neuralNet;
-    }
-
-    private void evaluateFitness() {
-        neuralNet = getNeuralNet();
-        Callable<Double> fitnessEvaluationTask = () -> {
-            double evaluatedFitness = params.FITNESS_EVALUATOR.apply(neuralNet);
-            LOGGER.fine(String.format("C%d fitness evaluated %f", getId(), evaluatedFitness));
-            return evaluatedFitness;
-        };
-        fitnessFuture = params.EXECUTOR.submit(fitnessEvaluationTask);
+    public void evaluateFitness() {
+        NeuralNet neuralNet = new NeuralNet(params, this);
+        fitness = params.FITNESS_EVALUATOR.apply(neuralNet);
+        LOGGER.fine(String.format("C%d fitness evaluated %f", getId(), fitness));
     }
 
     @Override
@@ -78,15 +66,7 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public double getFitness() {
-        if (fitnessFuture == null) {
-            evaluateFitness();
-        }
-        try {
-            return fitnessFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            LOGGER.severe(e.getMessage());
-        }
-        return -1;
+        return fitness;
     }
 
     public Chromosome mutate() {

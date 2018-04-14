@@ -92,11 +92,11 @@ public class Parameters {
 
         // NEAT parameters
         // Population parameters
-        params.POPULATION_SIZE = 100; // Population Size
+        params.POPULATION_SIZE = 50; // Population Size
         params.SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
         params.MAXIMUM_POPULATION_STAGNATION = 1000; // Generations of non-improvement before population is reduced
-        params.TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
-        params.COMPATIBILITY_THRESHOLD = 0; // Starting threshold for measuring species compatibility
+        params.TARGET_SPECIES = 3; // No. of species to target using dynamic thresholding
+        params.COMPATIBILITY_THRESHOLD = -10; // Starting threshold for measuring species compatibility
         params.COMPAT_MOD = 0.1; // Amount to tweak compatibility threshold by
         // Species parameters
         params.MAXIMUM_SPECIES_STAGNATION = 1; // Generations of non-improvement before species is removed
@@ -186,29 +186,24 @@ public class Parameters {
 //            }
 //        }
 
-        int FITNESS_EVALUATIONS = 5;
-        int EVALUATION_PER_THREAD = 10;
+        int FITNESS_EVALUATIONS = 1;
         params.FITNESS_EVALUATOR = (nn) -> {
             LOGGER.fine(String.format("Evaluating fitness for C%d", nn.getChromosome().getId()));
-            Function<List<Integer>, List<Double>> tetrisFitnessEvaluator = l -> {
-                NeuralNet subNn = new NeuralNet(nn);
-                return l.stream()
-                        .map(i -> {
-                            TetrisState s = new TetrisState(subNn);
-                            while (!s.hasLost()) {
-                                s.makeBestMove();
-                            }
-                            return s.getFitness();
-                        })
-                        .collect(Collectors.toList());
-            };
-            Function<Integer, Integer> partitioner = i -> i % EVALUATION_PER_THREAD;
-            double finalFitness = IntStream.range(0, FITNESS_EVALUATIONS).boxed()
-                    .collect(Collectors.groupingBy(partitioner))
-                    .values().parallelStream()
-                    .map(tetrisFitnessEvaluator)
-                    .flatMap(List::stream).collect(Collectors.toList())
-                    .stream().mapToDouble(d->d).average().orElse(0);
+            double finalFitness = IntStream.range(0, FITNESS_EVALUATIONS)
+                    .mapToDouble(i -> {
+                        TetrisState s = new TetrisState(nn);
+//                        TFrame demo = new TFrame(s);
+
+                        while (!s.hasLost()) {
+                            s.makeBestMove();
+
+//                            s.draw();
+//                            s.drawNext(0, 0);
+                        }
+//                        demo.dispose();
+                        return s.getFitness();
+                    })
+                    .average().orElse(0);
             LOGGER.fine(String.format("C%d fitness: %f", nn.getChromosome().getId(), finalFitness));
             return finalFitness;
         };

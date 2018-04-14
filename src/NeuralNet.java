@@ -102,7 +102,7 @@ public class NeuralNet {
                 sum += link.getWeightedValue();
             }
             switch (this.activationType) {
-                case BIAS: this.value = 1;
+                case BIAS: this.value = 1; break;
                 case LINEAR: this.value = sum; break;
                 case SIGMOID: this.value = sigmoid(sum); break;
             }

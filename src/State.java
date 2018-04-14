@@ -1,9 +1,9 @@
 import java.awt.Color;
-
-
+import java.util.Random;
 
 
 public class State {
+    public Random random = new Random(0);
     public static final int COLS = 10;
     public static final int ROWS = 21;
     public static final int N_PIECES = 7;
@@ -166,7 +166,7 @@ public class State {
 
     //random integer, returns 0-6
     private int randomPiece() {
-        return (int)(Math.random()*N_PIECES);
+        return random.nextInt(N_PIECES);
     }
 
 

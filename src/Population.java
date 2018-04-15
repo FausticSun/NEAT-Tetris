@@ -75,6 +75,11 @@ public class Population {
             LOGGER.info(String.format("Fittest Chromosome C%d fitness: %f", fittest.getId(), fittest.getFitness()));
         }
         fittest.debugEvaluateFitness();
+        for (int i=0; i<1; i++) {
+            evaluatePopulationFitness(offsprings);
+            fittest = offsprings.stream().max(Comparator.naturalOrder()).orElse(null);
+            LOGGER.info(String.format("Fittest Chromosome C%d fitness: %f", fittest.getId(), fittest.getFitness()));
+        }
         clearSpeciesChromosomes();
         allocateOffspringsToSpecies(offsprings);
         setStagnation();

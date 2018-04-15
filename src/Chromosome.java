@@ -55,26 +55,29 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public void evaluateFitness() {
-        int FITNESS_EVALUATIONS = 1;
-        NeuralNet nn = new NeuralNet(params, this);
-        LOGGER.fine(String.format("Evaluating fitness for C%d", nn.getChromosome().getId()));
-        double finalFitness = IntStream.range(0, FITNESS_EVALUATIONS)
-                .mapToDouble(i -> {
-                    TetrisState s = new TetrisState(nn);
-//                        TFrame demo = new TFrame(s);
+        double f = 0;
+        for (int i=0; i<1; i++) {
+            NeuralNet nn = new NeuralNet(params, this);
+            TetrisState s = new TetrisState(nn);
+            while (!s.hasLost())
+                s.makeBestMove();
+            f = s.getFitness();
+            LOGGER.fine(String.format("C%d evaluated fitness: %f", getId(), f));
+        }
+        fitness = f;
+    }
 
-                    while (!s.hasLost()) {
-                        s.makeBestMove();
-
-//                            s.draw();
-//                            s.drawNext(0, 0);
-                    }
-//                        demo.dispose();
-                    return s.getFitness();
-                })
-                .average().orElse(0);
-        LOGGER.fine(String.format("C%d fitness: %f", getId(), finalFitness));
-        fitness = finalFitness;
+    public void debugEvaluateFitness() {
+        double f;
+        LOGGER.info(String.format("C%d pb fitness: %f", getId(), fitness));
+        for (int i=0; i<5; i++) {
+            NeuralNet nn = new NeuralNet(params, this);
+            TetrisState s = new TetrisState(nn);
+            while (!s.hasLost())
+                s.makeBestMove();
+            f = s.getFitness();
+            LOGGER.info(String.format("C%d evaluated fitness: %f", getId(), f));
+        }
     }
 
     @Override
@@ -492,7 +495,7 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public List<Gene> getGenes() {
-        return genes;
+        return Collections.unmodifiableList(genes);
     }
 
     public int getSpeciesHint() {

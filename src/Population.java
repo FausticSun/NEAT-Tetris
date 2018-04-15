@@ -68,14 +68,17 @@ public class Population {
         pruneStagnantSpecies();
         List<Chromosome> offsprings = generateOffsprings();
         LOGGER.info(String.format("%d new offsprings generated", offsprings.size()));
-        evaluatePopulationFitness(offsprings);
-        LOGGER.info(String.format("Fittest Chromosome fitness before allocation: %f", offsprings.stream().mapToDouble(Chromosome::getFitness).max().orElse(0)));
+        Chromosome fittest = null;
+        for (int i=0; i<5; i++) {
+            evaluatePopulationFitness(offsprings);
+            fittest = offsprings.stream().max(Comparator.naturalOrder()).orElse(null);
+            LOGGER.info(String.format("Fittest Chromosome C%d fitness: %f", fittest.getId(), fittest.getFitness()));
+        }
+        fittest.debugEvaluateFitness();
         clearSpeciesChromosomes();
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
-        getFittestChromosome().evaluateFitness();
-        LOGGER.info(String.format("Fittest Chromosome fitness after allocation: %f", getFittestChromosome().getFitness()));
     }
 
     private void evaluatePopulationFitness(List<Chromosome> offsprings) {

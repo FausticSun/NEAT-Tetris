@@ -1,3 +1,7 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -8,7 +12,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class Chromosome implements Comparable<Chromosome> {
+public class Chromosome implements Comparable<Chromosome>, Saveable {
     private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
     private Parameters params;
     private Innovator innovator;
@@ -527,14 +531,28 @@ public class Chromosome implements Comparable<Chromosome> {
     public String createDotData() {
         String result = "digraph G {\n";
     
-        for (Gene g: genes) {
+        for (Gene g : genes) {
             result += "    " + g.getFrom() + " -> " + g.getTo() + " [label=" + g.getWeight();
-            if(!g.isEnabled()) {
+            if (!g.isEnabled()) {
                 result += ",style=dotted";
             }
             result += "];\n";
         }
-        
+    
         return result + "\n}";
+    }
+
+    public void save() {
+        save(String.format("C%d", this.id));
+    }
+
+    public void save(String filename) {
+        try (PrintWriter pr = new PrintWriter(String.format("Chromosomes/%s", filename))) {
+            for (Gene g: genes) {
+                pr.println(g.toString());
+            }
+        } catch (IOException ioe) {
+            LOGGER.severe(ioe.getMessage());
+        }
     }
 }

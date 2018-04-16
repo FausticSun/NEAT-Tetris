@@ -19,6 +19,13 @@ public class Gene extends Innovation {
         isEnabled = true;
         this.isEnabled = o.isEnabled;
     }
+    
+    public Gene(Parameters params, int id, int from, int to, double w, boolean enabled) {
+        super(id, new Link(from, to));
+        weight = w;
+        this.params = params;
+        this.isEnabled = enabled;
+    }
 
     public void perterbWeight() {
         this.weight += (new Random()).nextGaussian()*params.WEIGHT_MUTATION_RANGE;

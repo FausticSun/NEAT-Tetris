@@ -68,6 +68,23 @@ public class Chromosome implements Comparable<Chromosome> {
     public int compareTo(Chromosome o) {
         return Double.compare(this.getFitness(), o.getFitness());
     }
+    
+    public static Chromosome deserialize(Parameters param, Innovator innovator, IdGenerator idg, String data) {
+        Chromosome c = new Chromosome(param, innovator, idg);
+        c.genes.clear();
+        String[] lines = data.split(";");
+        for (String aGene : lines) {
+            if(!aGene.trim().equals("")) {
+                String[] geneData = aGene.split(",");
+                int id = Integer.parseInt(geneData[0]);
+                int from = Integer.parseInt(geneData[1]);
+                int to = Integer.parseInt(geneData[2]);
+                double weight = Double.parseDouble(geneData[3]);
+                c.genes.add(new Gene(param, id, from, to, weight, geneData[4].equals("t")));
+            }
+        }
+        return c;
+    }
 
     public double getFitness() {
         return fitness;
@@ -487,5 +504,37 @@ public class Chromosome implements Comparable<Chromosome> {
 
     public void setSpeciesHint(int speciesHint) {
         this.speciesHint = speciesHint;
+    }
+    
+    public String toString() {
+        return "Chromosome: ID: " + id + ", fitness: " + fitness + ", gene count: " + genes.size();
+    }
+    
+    public String serialize() {
+        String result = "";
+        for (Gene g: genes) {
+            result += g.getId() + "," + g.getFrom() + "," + g.getTo() + "," + g.getWeight() + ",";
+            if(!g.isEnabled()) {
+                result += "f";
+            } else {
+                result += "t";
+            }
+            result += ";";
+        }
+        return result;
+    }
+    
+    public String createDotData() {
+        String result = "digraph G {\n";
+    
+        for (Gene g: genes) {
+            result += "    " + g.getFrom() + " -> " + g.getTo() + " [label=" + g.getWeight();
+            if(!g.isEnabled()) {
+                result += ",style=dotted";
+            }
+            result += "];\n";
+        }
+        
+        return result + "\n}";
     }
 }

@@ -1,3 +1,4 @@
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Logger;
@@ -8,12 +9,50 @@ public class PlayerSkeleton {
     static boolean EVOLVE = false;
 
     public static void main(String[] args) {
-        for (String arg : args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
             switch(arg) {
                 case "headless":
                     HEADLESS = true; break;
                 case "evolve":
                     EVOLVE = true; break;
+                case "-f":
+                    Parameters params = Parameters.createTetrisParameters();
+                    String filename = args[i+1];
+                    String data = "";
+                    try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+                        StringBuilder sb = new StringBuilder();
+                        String line = br.readLine();
+        
+                        while (line != null) {
+                            sb.append(line);
+                            sb.append(System.lineSeparator());
+                            line = br.readLine();
+                        }
+                        data = sb.toString();
+                    } catch(IOException ioe) {
+                        LOGGER.severe(ioe.toString());
+                    }
+                    Chromosome c = Chromosome.deserialize(params, new Innovator(params), new IdGenerator(), data);
+                    
+                    NeuralNet nn = new NeuralNet(params, c);
+                    TetrisState s = new TetrisState(nn);
+                    TFrame demo = new TFrame(s);
+    
+                    while(!s.hasLost()) {
+                        s.makeBestMove();
+                        s.draw();
+                        s.drawNext(0,0);
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    System.out.println("You hsave completed "+s.getRowsCleared()+" rows.");
+                    demo.dispose();
+                    
+                    return;
                 default:
                     break;
             }
@@ -53,12 +92,23 @@ public class PlayerSkeleton {
 
             while (!s.hasLost()) {
                 s.makeBestMove();
-
+    
                 s.draw();
                 s.drawNext(0, 0);
             }
             demo.dispose();
             LOGGER.info(String.format("%d moves made with %d rows cleared and %f fitness", s.getTurnNumber(), s.getRowsCleared(), s.getFitness()));
+
+            if(ex.getGeneration() % 5 == 0) {
+                LOGGER.fine("Exporting fittest chromosome to file...");
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter("FitGen" + ex.getGeneration() + ".txt"));) {
+                    writer.write(ex.getFittest().serialize());
+                    
+                    writer.close();
+                } catch (IOException ioe) {
+                    LOGGER.severe(ioe.toString());
+                }
+            }
         }
     }
 }

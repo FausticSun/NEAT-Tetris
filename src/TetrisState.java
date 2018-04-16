@@ -13,52 +13,52 @@ public class TetrisState extends State {
         this.nn = subNn;
     }
 
-    public double evaluateHeuristic(int move) {
+    public double evaluateHeuristic(int[][] currField, int[] currTop, int currNext, int move, boolean again) {
         // Create a copy of game field for simulation
         int[][] simulatedField = new int[ROWS][];
         for (int i=0; i<ROWS; i++) {
-            simulatedField[i] = Arrays.copyOf(getField()[i], COLS);
+            simulatedField[i] = Arrays.copyOf(currField[i], COLS);
         }
-        int[] simulatedTop = Arrays.copyOf(getTop(), COLS);
+        int[] simulatedTop = Arrays.copyOf(currTop, COLS);
 
         // Convert single int move to orient and slot
-        int orient = legalMoves[nextPiece][move][ORIENT];
-        int slot = legalMoves[nextPiece][move][SLOT];
+        int orient = legalMoves[currNext][move][ORIENT];
+        int slot = legalMoves[currNext][move][SLOT];
 
         // Simulate the move
         //height if the first column makes contact
-        int height = getTop()[slot]-getpBottom()[nextPiece][orient][0];
+        int height = getTop()[slot]-getpBottom()[currNext][orient][0];
         //for each column beyond the first in the piece
-        for(int c = 1; c < pWidth[nextPiece][orient];c++) {
-            height = Math.max(height,getTop()[slot+c]-getpBottom()[nextPiece][orient][c]);
+        for(int c = 1; c < pWidth[currNext][orient];c++) {
+            height = Math.max(height,getTop()[slot+c]-getpBottom()[currNext][orient][c]);
         }
 
         //check if game ended
-        if(height+getpHeight()[nextPiece][orient] >= ROWS) {
+        if(height+getpHeight()[currNext][orient] >= ROWS) {
             return 0.0;
         }
 
-        int landingHeight = height+getpHeight()[nextPiece][orient]/2;
+        int landingHeight = height+getpHeight()[currNext][orient]/2;
 
 
         //for each column in the piece - fill in the appropriate blocks
-        for(int i = 0; i < pWidth[nextPiece][orient]; i++) {
+        for(int i = 0; i < pWidth[currNext][orient]; i++) {
 
             //from bottom to top of brick
-            for(int h = height+getpBottom()[nextPiece][orient][i]; h < height+getpTop()[nextPiece][orient][i]; h++) {
+            for(int h = height+getpBottom()[currNext][orient][i]; h < height+getpTop()[currNext][orient][i]; h++) {
                 simulatedField[h][i+slot] = getTurnNumber();
             }
         }
 
         //adjust top
-        for(int c = 0; c < pWidth[nextPiece][orient]; c++) {
-            simulatedTop[slot+c]=height+getpTop()[nextPiece][orient][c];
+        for(int c = 0; c < pWidth[currNext][orient]; c++) {
+            simulatedTop[slot+c]=height+getpTop()[currNext][orient][c];
         }
 
         int rowsCleared = 0;
 
         //check for full rows - starting at the top
-        for(int r = height+getpHeight()[nextPiece][orient]-1; r >= height; r--) {
+        for(int r = height+getpHeight()[currNext][orient]-1; r >= height; r--) {
             //check all columns in the row
             boolean full = true;
             for(int c = 0; c < COLS; c++) {
@@ -193,12 +193,27 @@ public class TetrisState extends State {
         }
 
         // Convert next piece to one-hot input
-        int nextPiece = super.getNextPiece();
         for (int i=0; i<N_PIECES; i++) {
-            features.add(i == nextPiece ? 1.0 : 0.0);
+            features.add(i == currNext ? 1.0 : 0.0);
         }
-
-        return nn.activate(features).get(0);
+        
+        if(again) {
+            double greedyResult = nn.activate(features).get(0);
+            double total = 0;
+            for(int i = 0; i < N_PIECES; i++) {
+                int nextP = i;
+                total += IntStream.range(0, legalMoves[nextP].length).boxed()
+                        .map(newMove -> this.evaluateHeuristic(simulatedField, simulatedTop, nextP, newMove, false))
+                        .max(Double::compareTo).orElse(0.0);
+            }
+            total /= N_PIECES;
+            System.out.println(greedyResult + " " + total);
+            double newResult = (greedyResult + (total * nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER)) / (1 + nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER);
+            System.out.println("Difference: " + Math.abs(newResult - greedyResult));
+            return newResult;
+        } else {
+            return nn.activate(features).get(0);
+        }
     }
 
     public boolean setOutputs(List<Double> outputs) {
@@ -279,7 +294,7 @@ public class TetrisState extends State {
 
     public int getBestMove() {
         return IntStream.range(0, legalMoves().length).boxed()
-                .max(Comparator.comparing(this::evaluateHeuristic))
+                .max(Comparator.comparing(move -> this.evaluateHeuristic(getField(), getTop(), nextPiece, move, true)))
                 .orElse(0);
     }
 }

@@ -1,11 +1,6 @@
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -93,6 +88,10 @@ public class Chromosome implements Comparable<Chromosome>, Saveable {
     public double getFitness() {
         return fitness;
     }
+    
+    public Parameters getParams() {
+    	return params;
+	}
 
     public Chromosome mutate() {
         if (params.CLASSIC_TOPOLOGY_MUTATION) {

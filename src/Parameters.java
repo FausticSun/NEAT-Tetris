@@ -14,6 +14,7 @@ public class Parameters {
     public String EXPERIMENT_TYPE = "";
     public int GENERATION_LIMIT = 20; // Number of iterations
     public double FITNESS_LIMIT = 1000; // Value for which we automatically end the search
+    public double LOOKAHEAD_MULTIPLIER = 0.0;
 
     // Neural Net related parameters
     public int INPUT_SIZE = 2;

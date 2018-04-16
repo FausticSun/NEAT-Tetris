@@ -1,3 +1,7 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -8,7 +12,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class Chromosome implements Comparable<Chromosome> {
+public class Chromosome implements Comparable<Chromosome>, Saveable {
     private static final Logger LOGGER = Logger.getLogger( Chromosome.class.getName() );
     private Parameters params;
     private Innovator innovator;
@@ -487,5 +491,19 @@ public class Chromosome implements Comparable<Chromosome> {
 
     public void setSpeciesHint(int speciesHint) {
         this.speciesHint = speciesHint;
+    }
+
+    public void save() {
+        save(String.format("C%d", this.id));
+    }
+
+    public void save(String filename) {
+        try (PrintWriter pr = new PrintWriter(String.format("Chromosomes/%s", filename))) {
+            for (Gene g: genes) {
+                pr.println(g.toString());
+            }
+        } catch (IOException ioe) {
+            LOGGER.severe(ioe.getMessage());
+        }
     }
 }

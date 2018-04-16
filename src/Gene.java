@@ -35,4 +35,8 @@ public class Gene extends Innovation {
     public void toggleEnabled() {
         isEnabled = !isEnabled;
     }
+
+    public String toString() {
+        return String.format("%d, %d, %d, %f, %b", getId(), getFrom(), getTo(), getWeight(), isEnabled());
+    }
 }

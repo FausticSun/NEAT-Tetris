@@ -27,7 +27,7 @@ public class Parameters {
 
     // NEAT parameters
     // Population parameters
-    public int POPULATION_SIZE = 15; // Population Size
+    public int POPULATION_SIZE = 100; // Population Size
     public double SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
     public int MAXIMUM_POPULATION_STAGNATION = 20; // Generations of non-improvement before population is reduced
     public int TARGET_SPECIES = 10; // No. of species to target using dynamic thresholding
@@ -92,7 +92,7 @@ public class Parameters {
 
         // NEAT parameters
         // Population parameters
-        params.POPULATION_SIZE = 50; // Population Size
+        params.POPULATION_SIZE = 100; // Population Size
         params.SURVIVAL_THRESHOLD = 0.2; // Percentage of species allowed to survive and breed
         params.MAXIMUM_POPULATION_STAGNATION = 1000; // Generations of non-improvement before population is reduced
         params.TARGET_SPECIES = 3; // No. of species to target using dynamic thresholding

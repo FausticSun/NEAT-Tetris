@@ -278,7 +278,7 @@ public class TetrisState extends State {
     }
 
     public int getBestMove() {
-        return IntStream.range(0, legalMoves().length).parallel().boxed()
+        return IntStream.range(0, legalMoves().length).boxed()
                 .max(Comparator.comparing(this::evaluateHeuristic))
                 .orElse(0);
     }

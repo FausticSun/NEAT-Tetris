@@ -68,18 +68,7 @@ public class Population {
         pruneStagnantSpecies();
         List<Chromosome> offsprings = generateOffsprings();
         LOGGER.info(String.format("%d new offsprings generated", offsprings.size()));
-        Chromosome fittest = null;
-        for (int i=0; i<5; i++) {
-            evaluatePopulationFitness(offsprings);
-            fittest = offsprings.stream().max(Comparator.naturalOrder()).orElse(null);
-            LOGGER.info(String.format("Fittest Chromosome C%d fitness: %f", fittest.getId(), fittest.getFitness()));
-        }
-        fittest.debugEvaluateFitness();
-        for (int i=0; i<1; i++) {
-            evaluatePopulationFitness(offsprings);
-            fittest = offsprings.stream().max(Comparator.naturalOrder()).orElse(null);
-            LOGGER.info(String.format("Fittest Chromosome C%d fitness: %f", fittest.getId(), fittest.getFitness()));
-        }
+        evaluatePopulationFitness(offsprings);
         clearSpeciesChromosomes();
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
@@ -87,7 +76,7 @@ public class Population {
     }
 
     private void evaluatePopulationFitness(List<Chromosome> offsprings) {
-        offsprings.parallelStream()
+        offsprings.stream()
                 .forEach(Chromosome::evaluateFitness);
     }
 

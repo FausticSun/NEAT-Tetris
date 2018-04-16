@@ -25,7 +25,6 @@ public class Chromosome implements Comparable<Chromosome> {
         this.id = idGenerator.getNextId();
         for (Link link: params.DEFAULT_CHROMOSOME_BLUEPRINT)
             genes.add(innovator.innovateLink(link));
-        this.evaluateFitness();
     }
 
     public Chromosome(Chromosome o, List<Gene> newGenes) {
@@ -55,29 +54,14 @@ public class Chromosome implements Comparable<Chromosome> {
     }
 
     public void evaluateFitness() {
-        double f = 0;
-        for (int i=0; i<1; i++) {
-            NeuralNet nn = new NeuralNet(params, this);
+        NeuralNet nn = new NeuralNet(params, this);
+        fitness = IntStream.range(0, 5).mapToDouble(i -> {
             TetrisState s = new TetrisState(nn);
             while (!s.hasLost())
                 s.makeBestMove();
-            f = s.getFitness();
-            LOGGER.fine(String.format("C%d evaluated fitness: %f", getId(), f));
-        }
-        fitness = f;
-    }
-
-    public void debugEvaluateFitness() {
-        double f;
-        LOGGER.info(String.format("C%d pb fitness: %f", getId(), fitness));
-        for (int i=0; i<5; i++) {
-            NeuralNet nn = new NeuralNet(params, this);
-            TetrisState s = new TetrisState(nn);
-            while (!s.hasLost())
-                s.makeBestMove();
-            f = s.getFitness();
-            LOGGER.info(String.format("C%d evaluated fitness: %f", getId(), f));
-        }
+            return s.getFitness();
+        }).average().orElse(0);
+        LOGGER.fine(String.format("C%d evaluated fitness: %f", getId(), fitness));
     }
 
     @Override
@@ -123,7 +107,6 @@ public class Chromosome implements Comparable<Chromosome> {
             anjiMutate();
         }
         
-        evaluateFitness();
         return this;
     }
 

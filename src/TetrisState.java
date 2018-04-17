@@ -27,10 +27,10 @@ public class TetrisState extends State {
 
         // Simulate the move
         //height if the first column makes contact
-        int height = getTop()[slot]-getpBottom()[currNext][orient][0];
+        int height = currTop[slot]-getpBottom()[currNext][orient][0];
         //for each column beyond the first in the piece
         for(int c = 1; c < pWidth[currNext][orient];c++) {
-            height = Math.max(height,getTop()[slot+c]-getpBottom()[currNext][orient][c]);
+            height = Math.max(height,currTop[slot+c]-getpBottom()[currNext][orient][c]);
         }
 
         //check if game ended
@@ -185,7 +185,7 @@ public class TetrisState extends State {
 //        features.add(rowsCleared);
 
         // Convert field to binary input
-        int[][] field = super.getField();
+        int[][] field = currField;
         for (int i=0; i<ROWS; i++) {
             for (int j=0; j<COLS; j++) {
                 features.add(field[i][j] == 0 ? 0.0 : 1.0);
@@ -206,9 +206,9 @@ public class TetrisState extends State {
                         .map(newMove -> this.evaluateHeuristic(simulatedField, simulatedTop, nextP, newMove, false))
                         .max(Double::compareTo).orElse(0.0);
             }
-            total /= N_PIECES;
+            double lookAheadAverage = total / N_PIECES;
             System.out.println(greedyResult + " " + total);
-            double newResult = (greedyResult + (total * nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER)) / (1 + nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER);
+            double newResult = (greedyResult + (lookAheadAverage * nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER)) / (1 + nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER);
             System.out.println("Difference: " + Math.abs(newResult - greedyResult));
             return newResult;
         } else {

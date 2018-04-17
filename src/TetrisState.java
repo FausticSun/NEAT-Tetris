@@ -207,9 +207,7 @@ public class TetrisState extends State {
                         .max(Double::compareTo).orElse(0.0);
             }
             double lookAheadAverage = total / N_PIECES;
-            System.out.println(greedyResult + " " + total);
             double newResult = (greedyResult + (lookAheadAverage * nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER)) / (1 + nn.getChromosome().getParams().LOOKAHEAD_MULTIPLIER);
-            System.out.println("Difference: " + Math.abs(newResult - greedyResult));
             return newResult;
         } else {
             return nn.activate(features).get(0);

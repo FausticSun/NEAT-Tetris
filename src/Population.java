@@ -78,7 +78,7 @@ public class Population {
     }
 
     private void evaluatePopulationFitness(List<Chromosome> offsprings) {
-        offsprings.stream()
+        offsprings.parallelStream()
                 .forEach(c -> c.evaluateFitness((new Random()).nextInt()));
     }
 

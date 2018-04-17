@@ -52,14 +52,12 @@ public class Chromosome implements Comparable<Chromosome>, Saveable {
         return id;
     }
 
-    public void evaluateFitness() {
+    public void evaluateFitness(int seed) {
         NeuralNet nn = new NeuralNet(params, this);
-        fitness = IntStream.range(0, 5).mapToDouble(i -> {
-            TetrisState s = new TetrisState(nn);
-            while (!s.hasLost())
-                s.makeBestMove();
-            return s.getFitness();
-        }).average().orElse(0);
+        TetrisState s = new TetrisState(nn, seed);
+        while (!s.hasLost())
+            s.makeBestMove();
+        fitness = s.getFitness();
         LOGGER.fine(String.format("C%d evaluated fitness: %f", getId(), fitness));
     }
 
@@ -550,6 +548,7 @@ public class Chromosome implements Comparable<Chromosome>, Saveable {
             for (Gene g: genes) {
                 pr.println(g.toString());
             }
+            pr.println(fitness);
         } catch (IOException ioe) {
             LOGGER.severe(ioe.getMessage());
         }

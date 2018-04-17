@@ -3,7 +3,7 @@ import java.util.Random;
 
 
 public class State {
-    public Random random = new Random();
+    public Random random;
     public static final int COLS = 10;
     public static final int ROWS = 21;
     public static final int N_PIECES = 7;
@@ -160,6 +160,13 @@ public class State {
 
     //constructor
     public State() {
+        random = new Random();
+        nextPiece = randomPiece();
+
+    }
+
+    public State(int seed) {
+        random = new Random(seed);
         nextPiece = randomPiece();
 
     }

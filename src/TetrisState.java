@@ -8,6 +8,11 @@ public class TetrisState extends State {
     private int bestMove;
     private NeuralNet nn;
 
+    public TetrisState(NeuralNet subNn, int seed) {
+        super(seed);
+        this.nn = subNn;
+    }
+
     public TetrisState(NeuralNet subNn) {
         super();
         this.nn = subNn;

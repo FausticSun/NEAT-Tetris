@@ -83,7 +83,7 @@ public class PlayerSkeleton {
         TFrame demo;
         NeuralNet nn;
         while (ex.getGeneration() < params.GENERATION_LIMIT) {
-            ex.run(1);
+            ex.run(0);
 
             LOGGER.info(String.format("Demoing fittest of Generation %d", ex.getGeneration()));
             nn = new NeuralNet(params, ex.getFittest());

@@ -74,12 +74,12 @@ public class Population {
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
-        getFittestChromosome().save();
+        getFittestChromosome().save(String.format("P%d", generation));
     }
 
     private void evaluatePopulationFitness(List<Chromosome> offsprings) {
         offsprings.stream()
-                .forEach(Chromosome::evaluateFitness);
+                .forEach(c -> c.evaluateFitness((new Random()).nextInt()));
     }
 
     private void pruneStagnantSpecies() {

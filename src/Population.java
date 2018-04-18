@@ -33,7 +33,7 @@ public class Population {
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
-        getFittestChromosome().save();
+        getFittestChromosome().save(String.format("P%d", generation));
         LOGGER.info(String.format("Generation %d best fitness: %f",
                 generation,
                 this.getFittestChromosome().getFitness()));
@@ -74,11 +74,11 @@ public class Population {
         allocateOffspringsToSpecies(offsprings);
         setStagnation();
         dynamicThresholding();
-        getFittestChromosome().save();
+        getFittestChromosome().save(String.format("P%d", generation));
     }
 
     private void evaluatePopulationFitness(List<Chromosome> offsprings) {
-        offsprings.stream()
+        offsprings.parallelStream()
                 .forEach(Chromosome::evaluateFitness);
     }
 

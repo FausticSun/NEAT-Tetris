@@ -1,7 +1,4 @@
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -51,6 +48,22 @@ public class Chromosome implements Comparable<Chromosome>, Saveable {
         for (Gene gene: o.genes)
             genes.add(new Gene(gene));
         LOGGER.fine(String.format("Creating new chromosome C%d", id));
+    }
+
+    public Chromosome(Parameters params, BufferedReader br) {
+        this.params = params;
+        String line;
+        String[] tokens;
+        try {
+            while ((line = br.readLine()) != null) {
+                tokens = line.split(", ");
+                if (tokens.length > 1) {
+                    genes.add(new Gene(tokens));
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.severe(e.getMessage());
+        }
     }
 
     public int getId() {

@@ -83,7 +83,7 @@ public class Parameters {
         int features = 26;
         params.EXPERIMENT_TYPE = "TETRIS";
         params.GENERATION_LIMIT = 10000; // Number of iterations
-        params.FITNESS_LIMIT = 1000000; // Value for which we automatically end the search
+        params.FITNESS_LIMIT = Integer.MAX_VALUE; // Value for which we automatically end the search
         // NerualNet parameters
         params.INPUT_SIZE = features+State.ROWS*State.COLS+State.N_PIECES;
         params.OUTPUT_SIZE = 1;

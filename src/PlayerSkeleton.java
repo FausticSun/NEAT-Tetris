@@ -16,43 +16,32 @@ public class PlayerSkeleton {
                     HEADLESS = true; break;
                 case "evolve":
                     EVOLVE = true; break;
-                case "-f":
-                    Parameters params = Parameters.createTetrisParameters();
-                    String filename = args[i+1];
-                    String data = "";
-                    try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
-                        StringBuilder sb = new StringBuilder();
-                        String line = br.readLine();
-        
-                        while (line != null) {
-                            sb.append(line);
-                            sb.append(System.lineSeparator());
-                            line = br.readLine();
-                        }
-                        data = sb.toString();
-                    } catch(IOException ioe) {
-                        LOGGER.severe(ioe.toString());
+                case "-demo":
+                    Parameters demoParams = Parameters.createTetrisParameters();
+                    String demoFile = args[i+1];
+                    Chromosome demoChromosome = null;
+                    try {
+                        demoChromosome = new Chromosome(demoParams, new BufferedReader(new FileReader(demoFile)));
+                    } catch (FileNotFoundException e) {
+                        LOGGER.severe(e.getMessage());
                     }
-                    Chromosome c = Chromosome.deserialize(params, new Innovator(params), new IdGenerator(), data);
-                    
-                    NeuralNet nn = new NeuralNet(params, c);
+                    NeuralNet nn = new NeuralNet(demoParams, demoChromosome);
                     TetrisState s = new TetrisState(nn);
                     TFrame demo = new TFrame(s);
-    
+
                     while(!s.hasLost()) {
                         s.makeBestMove();
                         s.draw();
                         s.drawNext(0,0);
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+//                        try {
+//                            Thread.sleep(10);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
                     }
-                    System.out.println("You hsave completed "+s.getRowsCleared()+" rows.");
                     demo.dispose();
-                    
-                    return;
+                    System.out.println("You have completed "+s.getRowsCleared()+" rows.");
+
                 default:
                     break;
             }

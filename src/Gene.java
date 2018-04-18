@@ -19,7 +19,13 @@ public class Gene extends Innovation {
         isEnabled = true;
         this.isEnabled = o.isEnabled;
     }
-    
+
+    public Gene(String[] tokens) {
+        super(Integer.valueOf(tokens[0]), new Link(Integer.valueOf(tokens[1]), Integer.valueOf(tokens[2])));
+        this.weight = Double.valueOf(tokens[3]);
+        this.isEnabled = Boolean.valueOf(tokens[4]);
+    }
+
     public Gene(Parameters params, int id, int from, int to, double w, boolean enabled) {
         super(id, new Link(from, to));
         weight = w;

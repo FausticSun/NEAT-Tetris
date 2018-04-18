@@ -551,6 +551,7 @@ public class Chromosome implements Comparable<Chromosome>, Saveable {
             for (Gene g: genes) {
                 pr.println(g.toString());
             }
+            pr.println(fitness);
         } catch (IOException ioe) {
             LOGGER.severe(ioe.getMessage());
         }

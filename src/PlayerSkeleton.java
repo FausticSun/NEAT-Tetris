@@ -61,6 +61,7 @@ public class PlayerSkeleton {
     }
 
     public PlayerSkeleton() {
+        (new File("Chromosomes")).mkdirs();
 //        State s = new State();
 //        ArrayList<Integer> pieces = new ArrayList<>();
 //        while (!s.hasLost()) {

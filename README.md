@@ -1,5 +1,11 @@
 # NEAT-Tetris
-Evolving a Tetris playing AI with NEAT
+Evolving an AI to play Tetris Using Neuroevolution of Augmenting Topologies
+
+In this project, we attempt to use the [the NeuroEvolution of Augmenting Topologies (NEAT)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf) as an algorithm for learning Tetris. By using NEAT over a typical neural network, it may be able to learn better than a typical neural network, with the ability to learn it's structure, adapting not only the weights but which nodes the links connect to and providing the ability to jump between layers, reducing the impact of vanishing gradient.
+
+## Result
+
+Our final score is 830000 lines cleared. The results are unexpectedly good because it was able to evolve so quickly in merely 12 generations. The average time taken to complete the 830000 with the tetris GUI is approximately 118 minutes.
 
 ## Files	
 ### State
@@ -26,6 +32,6 @@ The main function allows you to play a game manually using the arrow keys.
 This is a drawing library.
 
 ### PlayerSkeleton
-An example of how to implement a player.
+The actual player implementation.
 
-The main function plays a game automatically (with visualization).
+The main function performs the training across generations, showcasing the best results every 5 generations.
